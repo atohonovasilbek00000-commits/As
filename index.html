@@ -1,481 +1,237 @@
-npm create vite@latest uzdate -- --template react
-cd uzdate
-npm install
-npm install @supabase/supabase-js
-npm install react-router-dom
-npm install framer-motion
-npm install lucide-react
-npm install swiper
-npm install @twa-dev/sdk
-npm install tailwindcss @tailwindcss/vite
-src/
-│
-├── components/
-│     Header.jsx
-│     BottomNav.jsx
-│     ProfileCard.jsx
-│     SearchBar.jsx
-│
-├── pages/
-│     Explore.jsx
-│     Chat.jsx
-│     Reels.jsx
-│     Profile.jsx
-│     Login.jsx
-│
-├── services/
-│     supabase.js
-│
-├── assets/
-│
-├── App.jsx
-├── main.jsx
-└── index.css
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
+const { Bot, Keyboard, InlineKeyboard, Context } = require("grammY");
 
-export default defineConfig({
-  plugins: [react(), tailwindcss()]
+// TOKЕNNI SHU ЕRGA QO'YING
+const BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"; 
+const bot = new Bot(BOT_TOKEN);
+
+// ----------------------------------------------------
+// 🗄️ IN-MEMORY DATA STORAGE (Ma'lumotlar bazasi o'rniga)
+// ----------------------------------------------------
+const users = new Map();       // Foydalanuvchilar profillari
+const matches = [];            // Like / Super Like-lar
+const messages = [];           // Chat xabarlari
+const reels = [];              // Qisqa videolar bo'limi
+const reports = [];            // Shikoyatlar (Xavfsizlik)
+const adminList =;  // Admin Telegram ID ro'yxati (o'zingiznikini qo'ying)
+
+// ----------------------------------------------------
+// ⌨️ KLAVIATURALAR (Asosiy Menyu)
+// ----------------------------------------------------
+const mainMenu = new Keyboard()
+    .text("👤 Profilim").text("🔍 Profil Qidirish").row()
+    .text("❤️ Matchlarim").text("💬 Chatlar").row()
+    .text("🎬 Reels (Video)").text("🏆 Premium (⭐)").row()
+    .text("🛡️ Xavfsizlik").text("👑 Admin Panel").row()
+    .resized();
+
+// ----------------------------------------------------
+// 🚀 START BUYRUG'I
+// ----------------------------------------------------
+bot.command("start", async (ctx) => {
+    const userId = ctx.from.id;
+
+    // Soddalashtirilgan ro'yxatdan o'tish (Profil yaratish)
+    if (!users.has(userId)) {
+        users.set(userId, {
+            id: userId,
+            username: ctx.from.username || "username_yoq",
+            first_name: ctx.from.first_name,
+            age: 22, // Standart qiymat (Profil sozlamalarida o'zgaradi)
+            region: "Toshkent",
+            city: "Yunusobod",
+            photos: ["https://picsum.photos"], // Bir nechta rasm (6-10 tagacha)
+            video_note: null, // Qisqa video (15-30 soniya)
+            voice_intro: null, // Ovozli tanishtiruv
+            is_verified: true, // Tasdiqlangan profil (✔️)
+            interests: ["Sport", "Musiqa", "Sayohat"],
+            is_premium: false,
+            is_banned: false,
+            is_adult: true, // 18+ tasdiqlash
+            ai_score: 98, // AI tomonidan soxtalikni aniqlash foizi
+            last_active: "Hozir onlayn"
+        });
+        
+        // Yangi qo'shilganlar bildirishnomasi
+        console.log(`[🤖 AI/Tizim]: Yangi foydalanuvchi qo'shildi: ${ctx.from.first_name}`);
+    }
+
+    await ctx.reply(
+        `👋 Salom ${ctx.from.first_name}!\n\nMukammal Tanishuv va Reels platformasiga xush kelibsiz.\n` +
+        `Quyidagi menyudan foydalanib o'z baxtingizni toping!`,
+        { reply_markup: mainMenu }
+    );
 });
-import React from "react";
-import ReactDOM from "react-dom/client";
-import "./index.css";
-import App from "./App";
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
-@import "tailwindcss";
+// ----------------------------------------------------
+// 👤 MODUL 1: PROFIL
+// ----------------------------------------------------
+bot.hears("👤 Profilim", async (ctx) => {
+    const user = users.get(ctx.from.id);
+    if (user.is_banned) return ctx.reply("❌ Siz bloklangansiz!");
+
+    const profileText = 
+        `👤 **Sizning Profilingiz** ${user.is_verified ? "✔️" : ""}\n\n` +
+        `📝 Ism: ${user.first_name}\n` +
+        `🎂 Yoshi: ${user.age} yosh\n` +
+        `📍 Manzil: ${user.region}, ${user.city}\n` +
+        `🎨 Qiziqishlar: ${user.interests.join(", ")}\n` +
+        `🎙️ Ovozli tanishtiruv: ${user.voice_intro ? "Mavjud 🔊" : "Yuklanmagan ✖️"}\n` +
+        `🎬 Qisqa video (30s): ${user.video_note ? "Sozlangan 📹" : "Yo'q"}\n` +
+        `🟢 Faollik: ${user.last_active}\n` +
+        `⭐ Premium: ${user.is_premium ? "Yoniq" : "O'chiq"}\n` +
+        `🤖 AI Trust Score: ${user.ai_score}% (Haqiqiy profil)`;
+
+    // Bir nechta rasmlardan birinchisini yuborish
+    await ctx.replyWithPhoto(user.photos[0], { caption: profileText, parse_mode: "Markdown" });
+});
+
+// ----------------------------------------------------
+// 🔍 MODUL 2: QIDIRUV & ❤️ MODUL 3: TANISHUV (Match)
+// ----------------------------------------------------
+bot.hears("🔍 Profil Qidirish", async (ctx) => {
+    const myId = ctx.from.id;
+    
+    // O'zidan boshqa tasodifiy foydalanuvchini topish (Viloyat va Yosh bo'yicha filter simulyatsiyasi)
+    let partner = null;
+    for (let [id, u] of users.entries()) {
+        if (id !== myId && !u.is_banned) {
+            partner = u;
+            break;
+        }
+    }
+
+    if (!partner) {
+        // Test rejimida ishlashi uchun sun'iy ikkinchi profil yaratamiz
+        const testId = 999999;
+        users.set(testId, {
+            id: testId, username: "malika_dating", first_name: "Malika", age: 21,
+            region: "Toshkent", city: "Chilonzor", photos: ["https://picsum.photos"],
+            interests: ["Raqs", "Kitoblar"], is_premium: false, is_banned: false, ai_score: 95
+        });
+        partner = users.get(testId);
+    }
+
+    const partnerText = 
+        `🔍 **Sizga mos profil topildi!**\n\n` +
+        `Ism: ${partner.first_name}\n` +
+        `Yoshi: ${partner.age}\n` +
+        `Joylashuv: ${partner.region}, ${partner.city}\n` +
+        `Qiziqishlari: ${partner.interests.join(", ")}`;
+
+    const inlineKeyboard = new InlineKeyboard()
+        .text("❌ Dislike", `dislike_${partner.id}`)
+        .text("❤️ Like", `like_${partner.id}`)
+        .text("⭐ Super Like", `super_${partner.id}`);
+
+    await ctx.replyWithPhoto(partner.photos[0], { caption: partnerText, reply_markup: inlineKeyboard });
+});
+
+// Like/Dislike Bosilgandagi tugmalar ishlovi (Match & Bildirishnoma tizimi)
+bot.on("callback_query:data", async (ctx) => {
+    const data = ctx.callbackQuery.data;
+    const myId = ctx.from.id;
+
+    if (data.startsWith("like_") || data.startsWith("super_")) {
+        const targetId = parseInt(data.split("_")[1]);
+        
+        matches.push({ liker: myId, liked: targetId, type: data.split("_")[0] });
+        await ctx.answerCallbackQuery("Sizga bu profil yoqdi! ❤️");
+
+        // 🔔 MODUL 7: BILDIRISHNOMALAR (Simulyatsiya)
+        await ctx.reply("✨ Tizim: Unga bildirishnoma yuborildi!");
+
+        // O'zaro Match (Moslik) tekshiruvi
+        const mutual = matches.find(m => m.liker === targetId && m.liked === myId);
+        if (mutual || targetId === 999999) { // Test uchun avto-match
+            await ctx.reply(`🎉 **Yangi Match!** Siz va ${users.get(targetId).first_name} bir-biringizga yoqdingiz! \n💬 Chat bo'limiga o'ting.`);
+        }
+    } else if (data.startsWith("dislike_")) {
+        await ctx.answerCallbackQuery("O'tkazib yuborildi ⏭️");
+        await ctx.editMessageCaption({ caption: "Keyingi profillarni qidirib ko'ring." });
+    }
+});
+
+// ----------------------------------------------------
+// 💬 MODUL 4: CHAT
+// ----------------------------------------------------
+bot.hears("💬 Chatlar", async (ctx) => {
+    await ctx.reply(
+        `💬 **Chat tizimi faol**\n\n` +
+        `• Matnli xabarlar, Emoji va stikerlar yuborish mumkin.\n` +
+        `• Xabarlarni o'chirish va ovozli xabar (Voice) yo'llash qo'llab quvvatlanadi.\n\n` +
+        `*Hozircha faol chatlar mavjud emas.*`, { parse_mode: "Markdown" }
+    );
+});
+
+// ----------------------------------------------------
+// 📹 MODUL 5: VIDEO & OVOZLI QO'NG'IROQLAR
+// ----------------------------------------------------
+bot.hears("📹 Video", async (ctx) => {
+    const videoMenu = new InlineKeyboard()
+        .text("📞 Ovozli qo'ng'iroq", "call_voice")
+        .text("📹 Video Chat", "call_video").row()
+        .text("🎲 Tasodifiy video chat (Ruletka)", "roulette");
+
+    await ctx.reply("📹 **Video va Ovozli aloqa markazi**\n\nKim bilan bog'lanmoqchisiz?", {
+        reply_markup: videoMenu,
+        parse_mode: "Markdown"
+    });
+});
+
+// ----------------------------------------------------
+// 🎬 MODUL 6: REELS (Qisqa videolar)
+// ----------------------------------------------------
+bot.hears("🎬 Reels (Video)", async (ctx) => {
+    // 🤖 AI MODUL 11: Tavsiya algoritmi bo'yicha reels chiqarish simulyatsiyasi
+    await ctx.replyWithVideo("https://githubusercontent.com", {
+        caption: "🎬 **Reels bo'limi**\n\n@foydalanuvchi: Mening yangi videom! 🚀\n\n❤️ 1,240 | 💬 42 izoh",
+        reply_markup: new InlineKeyboard()
+            .text("❤️ Like", "reels_like").text("💬 Izoh", "reels_comment").text("🚀 Ulashish", "reels_share"),
+        parse_mode: "Markdown"
+    });
+});
+
+// ----------------------------------------------------
+// 🏆 MODUL 8: PREMIUM
+// ----------------------------------------------------
+bot.hears("🏆 Premium (⭐)", async (ctx) => {
+    const user = users.get(ctx.from.id);
+    
+    await ctx.reply(
+        `🏆 **PREMIUM OBUNA (⭐)**\n\n` +
+        `Imkoniyatlar:\n` +
+        `• 🚫 Reklamasiz foydalanish\n` +
+        `• 🔥 Cheksiz Like bosish imkoniyati\n` +
+        `• 🚀 Profilni qidiruvda yuqoriga chiqarish (Boost)\n` +
+        `• 👀 Kim profilingizni ko'rganini aniqlash\n` +
+        `• ⭐ Profil yonida maxsus Premium belgi\n\n` +
+        `Sizning holatingiz: ${user.is_premium ? "Faol ✅" : "Oddiy foydalanuvchi ✖️"}`,
+        {
+            reply_markup: new InlineKeyboard().text("Sotib olish — $4.99/oy", "buy_premium")
+        }
+    );
+});
+
+// ----------------------------------------------------
+// 🛡️ MODUL 9: XAVFSIZLIK (Shikoyat va Bloklash)
+// ----------------------------------------------------
+bot.hears("🛡️ Xavfsizlik", async (ctx) => {
+    await ctx.reply(
+        `🛡️ **Xavfsizlik va Moderatsiya markazi**\n\n` +
+        `• 🔞 18+ Profil tasdiqlash holati: Faol\n` +
+        `• 🤖 AI Spamdan himoya: Yoqilgan\n\n` +
+        `Agar nomaqbul profilga duch kelsangiz, quyidagi tugmani bosing:`,
+        {
+            reply_markup: new InlineKeyboard().text("⚠️ Profil ustidan shikoyat qilish", "report_user")
+        }
+    );
+});
+
+// ----------------------------------------------------
+// 👑 MODUL 10: ADMIN PANEL
+// ----------------------------------------------------
+bot.hears("👑 Admin Panel", async (ctx) => {
+    if (!adminList.includes(ctx.from.id)) {
+        return ctx.reply("❌ Kechirasiz, siz admin emassiz!");
+    }
 
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-}
-
-body{
-background:#09090b;
-color:white;
-font-family:Inter,sans-serif;
-}
-
-::-webkit-scrollbar{
-display:none;
-}
-
-button{
-cursor:pointer;
-}
-
-img{
-user-select:none;
-}
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-
-import Explore from "./pages/Explore";
-import Chat from "./pages/Chat";
-import Reels from "./pages/Reels";
-import Profile from "./pages/Profile";
-import Login from "./pages/Login";
-
-export default function App(){
-
-return(
-
-<BrowserRouter>
-
-<Routes>
-
-<Route path="/" element={<Login/>}/>
-
-<Route path="/explore" element={<Explore/>}/>
-
-<Route path="/chat" element={<Chat/>}/>
-
-<Route path="/reels" element={<Reels/>}/>
-
-<Route path="/profile" element={<Profile/>}/>
-
-</Routes>
-
-</BrowserRouter>
-
-)
-
-}
-import { useNavigate } from "react-router-dom";
-import { Heart } from "lucide-react";
-
-export default function Login() {
-  const navigate = useNavigate();
-
-  return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-6">
-      <div className="w-full max-w-sm">
-
-        <div className="flex justify-center mb-8">
-          <div className="bg-pink-600 w-20 h-20 rounded-full flex items-center justify-center">
-            <Heart size={40} />
-          </div>
-        </div>
-
-        <h1 className="text-4xl font-bold text-center">
-          UzDate
-        </h1>
-
-        <p className="text-zinc-400 text-center mt-3">
-          O'zbekistondagi yangi tanishuv platformasi
-        </p>
-
-        <button
-          onClick={() => navigate("/explore")}
-          className="w-full mt-10 bg-pink-600 rounded-2xl py-4 text-lg font-semibold"
-        >
-          Telegram orqali kirish
-        </button>
-
-      </div>
-    </div>
-  );
-}
-import BottomNav from "../components/BottomNav";
-
-export default function Chat() {
-  return (
-    <div className="min-h-screen bg-zinc-950 text-white pb-24">
-
-      <h1 className="text-3xl font-bold p-5">
-        Chatlar
-      </h1>
-
-      <p className="px-5 text-zinc-400">
-        Hozircha chatlar yo'q.
-      </p>
-
-      <BottomNav />
-
-    </div>
-  );
-}
-import BottomNav from "../components/BottomNav";
-
-export default function Reels() {
-  return (
-    <div className="min-h-screen bg-black text-white pb-24">
-
-      <h1 className="text-3xl font-bold p-5">
-        Reels
-      </h1>
-
-      <BottomNav />
-
-    </div>
-  );
-}
-import BottomNav from "../components/BottomNav";
-
-export default function Profile() {
-  return (
-    <div className="min-h-screen bg-zinc-950 text-white pb-24">
-
-      <div className="flex flex-col items-center pt-10">
-
-        <img
-          src="https://picsum.photos/200"
-          className="w-28 h-28 rounded-full"
-        />
-
-        <h2 className="mt-4 text-2xl font-bold">
-          Ismingiz
-        </h2>
-
-        <p className="text-zinc-400">
-          Profil hali to'ldirilmagan
-        </p>
-
-      </div>
-
-      <BottomNav />
-
-    </div>
-  );
-}
-import { House, Clapperboard, MessageCircle, User } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
-
-export default function BottomNav() {
-  const { pathname } = useLocation();
-
-  const menus = [
-    {
-      name: "Kashf",
-      icon: <House size={22} />,
-      path: "/explore",
-    },
-    {
-      name: "Reels",
-      icon: <Clapperboard size={22} />,
-      path: "/reels",
-    },
-    {
-      name: "Chat",
-      icon: <MessageCircle size={22} />,
-      path: "/chat",
-    },
-    {
-      name: "Profil",
-      icon: <User size={22} />,
-      path: "/profile",
-    },
-  ];
-
-  return (
-    <div className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 h-16 flex justify-around items-center">
-
-      {menus.map((item) => (
-        <Link
-          key={item.path}
-          to={item.path}
-          className={`flex flex-col items-center text-xs ${
-            pathname === item.path
-              ? "text-pink-500"
-              : "text-zinc-400"
-          }`}
-        >
-          {item.icon}
-          <span>{item.name}</span>
-        </Link>
-      ))}
-
-    </div>
-  );
-}
-import { Search, Bell } from "lucide-react";
-
-export default function Header() {
-  return (
-    <div className="p-5 flex items-center justify-between">
-
-      <div>
-
-        <h1 className="text-3xl font-bold">
-          Kashf etish
-        </h1>
-
-        <p className="text-zinc-400">
-          Bugun yangi insonlar bilan tanishing
-        </p>
-
-      </div>
-
-      <div className="flex gap-3">
-
-        <button className="bg-zinc-800 p-3 rounded-full">
-          <Search size={20} />
-        </button>
-
-        <button className="bg-zinc-800 p-3 rounded-full">
-          <Bell size={20} />
-        </button>
-
-      </div>
-
-    </div>
-  );
-}
-import { Heart } from "lucide-react";
-
-export default function ProfileCard({ user }) {
-  return (
-    <div className="relative rounded-3xl overflow-hidden">
-
-      <img
-        src={user.image}
-        className="w-full h-72 object-cover"
-        alt={user.name}
-      />
-
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent" />
-
-      <div className="absolute bottom-4 left-4">
-
-        <h2 className="font-bold text-xl">
-          {user.name}
-        </h2>
-
-        <p>
-          {user.age} yosh
-        </p>
-
-        {user.online && (
-          <span className="text-green-400 text-sm">
-            ● Onlayn
-          </span>
-        )}
-
-      </div>
-
-      <button className="absolute right-4 bottom-4 bg-pink-600 p-3 rounded-full">
-        <Heart size={20} />
-      </button>
-
-    </div>
-  );
-}
-import Header from "../components/Header";
-import BottomNav from "../components/BottomNav";
-import ProfileCard from "../components/ProfileCard";
-
-const users = [
-  {
-    id: 1,
-    name: "Madina",
-    age: 21,
-    online: true,
-    image: "https://picsum.photos/400/600?1",
-  },
-  {
-    id: 2,
-    name: "Aziza",
-    age: 22,
-    online: true,
-    image: "https://picsum.photos/400/600?2",
-  },
-  {
-    id: 3,
-    name: "Nilufar",
-    age: 20,
-    online: false,
-    image: "https://picsum.photos/400/600?3",
-  },
-  {
-    id: 4,
-    name: "Shahnoza",
-    age: 23,
-    online: true,
-    image: "https://picsum.photos/400/600?4",
-  },
-];
-
-export default function Explore() {
-  return (
-    <div className="bg-zinc-950 min-h-screen text-white pb-20">
-
-      <Header />
-
-      <div className="grid grid-cols-2 gap-4 px-4">
-
-        {users.map((user) => (
-          <ProfileCard
-            key={user.id}
-            user={user}
-          />
-        ))}
-
-      </div>
-
-      <BottomNav />
-
-    </div>
-  );
-}
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = "https://YOUR_PROJECT.supabase.co";
-
-const supabaseKey = "YOUR_ANON_KEY";
-
-export const supabase = createClient(
-  supabaseUrl,
-  supabaseKey
-);
-VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-
-VITE_SUPABASE_ANON_KEY=YOUR_ANON_KEY
-import { createClient } from "@supabase/supabase-js";
-
-export const supabase = createClient(
-    import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_ANON_KEY
-);
-create table profiles (
-
-id uuid primary key default gen_random_uuid(),
-
-telegram_id bigint unique,
-
-ism text,
-
-yosh int,
-
-jins text,
-
-viloyat text,
-
-bio text,
-
-avatar text,
-
-online boolean default true,
-
-created_at timestamp default now()
-
-);
-import { useState } from "react";
-
-export default function CreateProfile(){
-
-const [ism,setIsm]=useState("");
-
-const [yosh,setYosh]=useState("");
-
-return(
-
-<div className="p-5 text-white bg-zinc-950 min-h-screen">
-
-<h1 className="text-3xl font-bold">
-
-Profil yaratish
-
-</h1>
-
-<input
-
-className="bg-zinc-800 w-full mt-6 p-4 rounded-xl"
-
-placeholder="Ismingiz"
-
-value={ism}
-
-onChange={(e)=>setIsm(e.target.value)}
-
-/>
-
-<input
-
-className="bg-zinc-800 w-full mt-4 p-4 rounded-xl"
-
-placeholder="Yoshingiz"
-
-value={yosh}
-
-onChange={(e)=>setYosh(e.target.value)}
-
-/>
-
-<button
-
-className="w-full mt-6 bg-pink-600 py-4 rounded-xl">
-
-Saqlash
-
-</button>
-
-</div>
-
-)
-
-}
