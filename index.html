@@ -1,161 +1,481 @@
-<!DOCTYPE html>
-<html lang="uz">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
-    <title>Telescope - Skaner va Tanishing</title>
-    <!-- Telegram WebApp JS -->
-    <script src="https://telegram.org"></script>
-    <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #0d0d0d; color: #ffffff; margin: 0; padding: 16px; padding-bottom: 100px;
-        }
-        .header-section { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-        .header-title { font-size: 24px; font-weight: 700; margin: 0; }
-        
-        /* Ro'yxatdan o'tish va Pasport yuklash */
-        .reg-card { background-color: #1c1c1e; padding: 16px; border-radius: 16px; margin-bottom: 20px; border: 1px solid #2c2c2e; }
-        .reg-card h3 { margin-top: 0; color: #2481cc; font-size: 16px; }
-        .upload-btn {
-            display: block; width: 100%; padding: 14px; background: linear-gradient(135deg, #2481cc, #0056b3);
-            color: white; text-align: center; border-radius: 12px; cursor: pointer; font-weight: bold; margin-bottom: 16px;
-        }
-        .input-group { margin-bottom: 12px; }
-        .input-group label { display: block; font-size: 12px; color: #8e8e93; margin-bottom: 4px; }
-        .input-group input {
-            width: 100%; padding: 12px; background-color: #0d0d0d; border: 1px solid #3a3a3c;
-            border-radius: 8px; color: white; box-sizing: border-box; font-size: 14px;
-        }
+npm create vite@latest uzdate -- --template react
+cd uzdate
+npm install
+npm install @supabase/supabase-js
+npm install react-router-dom
+npm install framer-motion
+npm install lucide-react
+npm install swiper
+npm install @twa-dev/sdk
+npm install tailwindcss @tailwindcss/vite
+src/
+│
+├── components/
+│     Header.jsx
+│     BottomNav.jsx
+│     ProfileCard.jsx
+│     SearchBar.jsx
+│
+├── pages/
+│     Explore.jsx
+│     Chat.jsx
+│     Reels.jsx
+│     Profile.jsx
+│     Login.jsx
+│
+├── services/
+│     supabase.js
+│
+├── assets/
+│
+├── App.jsx
+├── main.jsx
+└── index.css
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
-        /* Filtrlar / Teglar paneli */
-        .filters-container { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 16px; padding-bottom: 4px; }
-        .filters-container::-webkit-scrollbar { display: none; }
-        .search-btn { background-color: #1c1c1e; border: none; width: 36px; height: 36px; border-radius: 50%; color: #ffffff; display:flex; align-items:center; justify-content:center;}
-        .filter-tag {
-            background-color: #1c1c1e; color: #ffffff; border: none; padding: 8px 14px;
-            border-radius: 20px; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; white-space: nowrap;
-        }
-        .filter-tag.active { background-color: #ffffff; color: #000000; }
+export default defineConfig({
+  plugins: [react(), tailwindcss()]
+});
+import React from "react";
+import ReactDOM from "react-dom/client";
+import "./index.css";
+import App from "./App";
 
-        /* Grid va Model Kartochkalari */
-        .grid-wrapper { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-        .model-card { position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 3 / 4; background-color: #1c1c1e; }
-        .model-card img { width: 100%; height: 100%; object-fit: cover; }
-        .model-details { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%); padding: 14px; }
-        .model-name { font-size: 14px; font-weight: 600; margin: 0; }
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+@import "tailwindcss";
 
-        /* Pastki Menyu */
-        .nav-bar-bottom {
-            position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
-            background-color: rgba(28, 28, 30, 0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            display: flex; justify-content: space-around; width: calc(100% - 32px); max-width: 400px; padding: 10px 0; border-radius: 32px; border: 1px solid rgba(255, 255, 255, 0.05); z-index: 999;
-        }
-        .nav-button { display: flex; flex-direction: column; align-items: center; color: #8e8e93; text-decoration: none; font-size: 11px; gap: 4px; flex: 1; cursor: pointer; }
-        .nav-button.active { color: #ffffff; }
-    </style>
-</head>
-<body>
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+}
 
-    <div class="header-section">
-        <h1 class="header-title">Kashf qilish</h1>
-        <div>📊</div>
+body{
+background:#09090b;
+color:white;
+font-family:Inter,sans-serif;
+}
+
+::-webkit-scrollbar{
+display:none;
+}
+
+button{
+cursor:pointer;
+}
+
+img{
+user-select:none;
+}
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+import Explore from "./pages/Explore";
+import Chat from "./pages/Chat";
+import Reels from "./pages/Reels";
+import Profile from "./pages/Profile";
+import Login from "./pages/Login";
+
+export default function App(){
+
+return(
+
+<BrowserRouter>
+
+<Routes>
+
+<Route path="/" element={<Login/>}/>
+
+<Route path="/explore" element={<Explore/>}/>
+
+<Route path="/chat" element={<Chat/>}/>
+
+<Route path="/reels" element={<Reels/>}/>
+
+<Route path="/profile" element={<Profile/>}/>
+
+</Routes>
+
+</BrowserRouter>
+
+)
+
+}
+import { useNavigate } from "react-router-dom";
+import { Heart } from "lucide-react";
+
+export default function Login() {
+  const navigate = useNavigate();
+
+  return (
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-6">
+      <div className="w-full max-w-sm">
+
+        <div className="flex justify-center mb-8">
+          <div className="bg-pink-600 w-20 h-20 rounded-full flex items-center justify-center">
+            <Heart size={40} />
+          </div>
+        </div>
+
+        <h1 className="text-4xl font-bold text-center">
+          UzDate
+        </h1>
+
+        <p className="text-zinc-400 text-center mt-3">
+          O'zbekistondagi yangi tanishuv platformasi
+        </p>
+
+        <button
+          onClick={() => navigate("/explore")}
+          className="w-full mt-10 bg-pink-600 rounded-2xl py-4 text-lg font-semibold"
+        >
+          Telegram orqali kirish
+        </button>
+
+      </div>
     </div>
+  );
+}
+import BottomNav from "../components/BottomNav";
 
-    <!-- 1. Pasport orqali o'zbekcha ro'yxatdan o'tish bo'limi -->
-    <div class="reg-card">
-        <h3>🔒 Xavfsiz ID Ro'yxatdan o'tish</h3>
-        <label class="upload-btn">
-            📷 Pasportni rasmga olish
-            <input type="file" id="passport-file" accept="image/*" style="display: none;" onchange="scanPassport()">
-        </label>
-        
-        <div class="input-group">
-            <label>Ism Familiya (Avtomat)</label>
-            <input type="text" id="inp-name" readonly placeholder="Pasport kutilmoqda...">
-        </div>
-        <div class="input-group">
-            <label>Tug'ilgan sana (Avtomat)</label>
-            <input type="text" id="inp-dob" readonly placeholder="Pasport kutilmoqda...">
-        </div>
-        <div class="input-group">
-            <label>Pasport Seriya raqami (Avtomat)</label>
-            <input type="text" id="inp-passport" readonly placeholder="Pasport kutilmoqda...">
-        </div>
-        <div class="input-group">
-            <label>Jinsi (Avtomat)</label>
-            <input type="text" id="inp-gender" readonly placeholder="Pasport kutilmoqda...">
-        </div>
+export default function Chat() {
+  return (
+    <div className="min-h-screen bg-zinc-950 text-white pb-24">
+
+      <h1 className="text-3xl font-bold p-5">
+        Chatlar
+      </h1>
+
+      <p className="px-5 text-zinc-400">
+        Hozircha chatlar yo'q.
+      </p>
+
+      <BottomNav />
+
     </div>
+  );
+}
+import BottomNav from "../components/BottomNav";
 
-    <!-- 2. Filtrlar -->
-    <div class="filters-container">
-        <button class="search-btn">🔍</button>
-        <button class="filter-tag active">🔥 Trenddagilar</button>
-        <button class="filter-tag">💎 Mashhurlar</button>
-        <button class="filter-tag">💫 Yangilar</button>
+export default function Reels() {
+  return (
+    <div className="min-h-screen bg-black text-white pb-24">
+
+      <h1 className="text-3xl font-bold p-5">
+        Reels
+      </h1>
+
+      <BottomNav />
+
     </div>
+  );
+}
+import BottomNav from "../components/BottomNav";
 
-    <!-- 3. Modellar panjarasi -->
-    <div class="grid-wrapper">
-        <div class="model-card">
-            <img src="https://unsplash.com">
-            <div class="model-details"><p class="model-name">Brandi Andrews</p></div>
-        </div>
-        <div class="model-card">
-            <img src="https://unsplash.com">
-            <div class="model-details"><p class="model-name">Chimocurves</p></div>
-        </div>
+export default function Profile() {
+  return (
+    <div className="min-h-screen bg-zinc-950 text-white pb-24">
+
+      <div className="flex flex-col items-center pt-10">
+
+        <img
+          src="https://picsum.photos/200"
+          className="w-28 h-28 rounded-full"
+        />
+
+        <h2 className="mt-4 text-2xl font-bold">
+          Ismingiz
+        </h2>
+
+        <p className="text-zinc-400">
+          Profil hali to'ldirilmagan
+        </p>
+
+      </div>
+
+      <BottomNav />
+
     </div>
+  );
+}
+import { House, Clapperboard, MessageCircle, User } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 
-    <!-- Pastki Navigatsiya -->
-    <div class="nav-bar-bottom">
-        <div class="nav-button active"><span>🏠</span><span>Asosiy</span></div>
-        <div class="nav-button"><span>▶️</span><span>Reels</span></div>
-        <div class="nav-button"><span>👤</span><span>Profil</span></div>
+export default function BottomNav() {
+  const { pathname } = useLocation();
+
+  const menus = [
+    {
+      name: "Kashf",
+      icon: <House size={22} />,
+      path: "/explore",
+    },
+    {
+      name: "Reels",
+      icon: <Clapperboard size={22} />,
+      path: "/reels",
+    },
+    {
+      name: "Chat",
+      icon: <MessageCircle size={22} />,
+      path: "/chat",
+    },
+    {
+      name: "Profil",
+      icon: <User size={22} />,
+      path: "/profile",
+    },
+  ];
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 h-16 flex justify-around items-center">
+
+      {menus.map((item) => (
+        <Link
+          key={item.path}
+          to={item.path}
+          className={`flex flex-col items-center text-xs ${
+            pathname === item.path
+              ? "text-pink-500"
+              : "text-zinc-400"
+          }`}
+        >
+          {item.icon}
+          <span>{item.name}</span>
+        </Link>
+      ))}
+
     </div>
+  );
+}
+import { Search, Bell } from "lucide-react";
 
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
+export default function Header() {
+  return (
+    <div className="p-5 flex items-center justify-between">
 
-        // O'zingizning server ssilkangizni qo'ying
-        const BACKEND_URL = "https://your-backend-server.com"; 
+      <div>
 
-        async function scanPassport() {
-            const fileInput = document.getElementById('passport-file');
-            if (!fileInput.files.length) return;
+        <h1 className="text-3xl font-bold">
+          Kashf etish
+        </h1>
 
-            tg.MainButton.setText("Pasport tahlil qilinmoqda... ⏳").show();
+        <p className="text-zinc-400">
+          Bugun yangi insonlar bilan tanishing
+        </p>
 
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
+      </div>
 
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/v1/passport-ocr`, {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
+      <div className="flex gap-3">
 
-                if (data.success) {
-                    document.getElementById('inp-name').value = data.full_name;
-                    document.getElementById('inp-dob').value = data.birth_date;
-                    document.getElementById('inp-passport').value = data.passport_number;
-                    document.getElementById('inp-gender').value = data.gender;
-                    
-                    tg.MainButton.setText("Muvaffaqiyatli ro'yxatdan o'tdingiz! ✅");
-                    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-                } else {
-                    alert("Pasportni o'qib bo'lmadi, iltimos aniqroq rasmga oling.");
-                    tg.MainButton.hide();
-                }
-            } catch (error) {
-                alert("Serverga ulanishda xatolik.");
-                tg.MainButton.hide();
-            }
-        }
-    </script>
-</body>
-</html>
+        <button className="bg-zinc-800 p-3 rounded-full">
+          <Search size={20} />
+        </button>
+
+        <button className="bg-zinc-800 p-3 rounded-full">
+          <Bell size={20} />
+        </button>
+
+      </div>
+
+    </div>
+  );
+}
+import { Heart } from "lucide-react";
+
+export default function ProfileCard({ user }) {
+  return (
+    <div className="relative rounded-3xl overflow-hidden">
+
+      <img
+        src={user.image}
+        className="w-full h-72 object-cover"
+        alt={user.name}
+      />
+
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent" />
+
+      <div className="absolute bottom-4 left-4">
+
+        <h2 className="font-bold text-xl">
+          {user.name}
+        </h2>
+
+        <p>
+          {user.age} yosh
+        </p>
+
+        {user.online && (
+          <span className="text-green-400 text-sm">
+            ● Onlayn
+          </span>
+        )}
+
+      </div>
+
+      <button className="absolute right-4 bottom-4 bg-pink-600 p-3 rounded-full">
+        <Heart size={20} />
+      </button>
+
+    </div>
+  );
+}
+import Header from "../components/Header";
+import BottomNav from "../components/BottomNav";
+import ProfileCard from "../components/ProfileCard";
+
+const users = [
+  {
+    id: 1,
+    name: "Madina",
+    age: 21,
+    online: true,
+    image: "https://picsum.photos/400/600?1",
+  },
+  {
+    id: 2,
+    name: "Aziza",
+    age: 22,
+    online: true,
+    image: "https://picsum.photos/400/600?2",
+  },
+  {
+    id: 3,
+    name: "Nilufar",
+    age: 20,
+    online: false,
+    image: "https://picsum.photos/400/600?3",
+  },
+  {
+    id: 4,
+    name: "Shahnoza",
+    age: 23,
+    online: true,
+    image: "https://picsum.photos/400/600?4",
+  },
+];
+
+export default function Explore() {
+  return (
+    <div className="bg-zinc-950 min-h-screen text-white pb-20">
+
+      <Header />
+
+      <div className="grid grid-cols-2 gap-4 px-4">
+
+        {users.map((user) => (
+          <ProfileCard
+            key={user.id}
+            user={user}
+          />
+        ))}
+
+      </div>
+
+      <BottomNav />
+
+    </div>
+  );
+}
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = "https://YOUR_PROJECT.supabase.co";
+
+const supabaseKey = "YOUR_ANON_KEY";
+
+export const supabase = createClient(
+  supabaseUrl,
+  supabaseKey
+);
+VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+
+VITE_SUPABASE_ANON_KEY=YOUR_ANON_KEY
+import { createClient } from "@supabase/supabase-js";
+
+export const supabase = createClient(
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_ANON_KEY
+);
+create table profiles (
+
+id uuid primary key default gen_random_uuid(),
+
+telegram_id bigint unique,
+
+ism text,
+
+yosh int,
+
+jins text,
+
+viloyat text,
+
+bio text,
+
+avatar text,
+
+online boolean default true,
+
+created_at timestamp default now()
+
+);
+import { useState } from "react";
+
+export default function CreateProfile(){
+
+const [ism,setIsm]=useState("");
+
+const [yosh,setYosh]=useState("");
+
+return(
+
+<div className="p-5 text-white bg-zinc-950 min-h-screen">
+
+<h1 className="text-3xl font-bold">
+
+Profil yaratish
+
+</h1>
+
+<input
+
+className="bg-zinc-800 w-full mt-6 p-4 rounded-xl"
+
+placeholder="Ismingiz"
+
+value={ism}
+
+onChange={(e)=>setIsm(e.target.value)}
+
+/>
+
+<input
+
+className="bg-zinc-800 w-full mt-4 p-4 rounded-xl"
+
+placeholder="Yoshingiz"
+
+value={yosh}
+
+onChange={(e)=>setYosh(e.target.value)}
+
+/>
+
+<button
+
+className="w-full mt-6 bg-pink-600 py-4 rounded-xl">
+
+Saqlash
+
+</button>
+
+</div>
+
+)
+
+}
