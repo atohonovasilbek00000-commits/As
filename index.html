@@ -1,157 +1,135 @@
-import express from 'express';
-import { PrismaClient } from '@prisma/client';
-import http from 'http';
-import { Server } from 'socket.io';
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telescope Mini App</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://jsdelivr.net"></script>
+    <!-- React va ReactDOM CDN -->
+    <script src="https://unpkg.com" crossorigin></script>
+    <script src="https://unpkg.com" crossorigin></script>
+    <!-- Babel CDN (JSX kodni o'qish uchun) -->
+    <script src="https://unpkg.com"></script>
+    <!-- Lucide Icons (Ikonkalar uchun) -->
+    <script src="https://unpkg.com"></script>
+    <style>
+        /* Skrollbarni yashirish */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-zinc-950 flex justify-center items-center min-h-screen m-0 antialiased selection:bg-neutral-800">
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server); // 📹 Real-time Chat va Video qo'ng'iroq uchun
-const prisma = new PrismaClient();
+    <!-- Ilova ildizi -->
+    <div id="root" class="w-full max-w-md min-h-screen bg-black text-white relative flex flex-col shadow-2xl"></div>
 
-app.use(express.json());
+    <!-- React Komponenti -->
+    <script type="text/babel">
+        // Lucide ikonkalarini obyekt qilib olish
+        const { Search, Flame, Diamond, Sparkles, X, ChevronDown, MoreHorizontal, Grid, Compass, Film, User } = lucide;
 
-// 🤖 AI & XAVFSIZLIK: Nomaqbul so'zlarni avtomatik filtrlash (Spamdan himoya)
-const BAD_WORDS = ['soxta', 'haqorat', 'reklama', '18+']; 
-const filterBadWords = (text) => {
-  if (!text) return text;
-  let filtered = text;
-  BAD_WORDS.forEach(word => {
-    const regex = new RegExp(word, 'gi');
-    filtered = filtered.replace(regex, '***');
-  });
-  return filtered;
-};
+        function App() {
+            // Model ma'lumotlari ro'yxati (Test uchun ochiq manbali rasmlar)
+            const models = [
+                { id: 1, name: 'Brandi Andrews', img: 'https://unsplash.com' },
+                { id: 2, name: 'Chimocurves', img: 'https://unsplash.com' },
+                { id: 3, name: 'Ava Louise', img: 'https://unsplash.com' },
+                { id: 4, name: 'Alex Mucci', img: 'https://unsplash.com' },
+                { id: 5, name: 'Elena Rostova', img: 'https://unsplash.com' },
+                { id: 6, name: 'Jessica Miller', img: 'https://unsplash.com' }
+            ];
 
-// 🔍 QIDIRUV VA AI TAVSIYALARI
-app.get('/api/search', async (req, res) => {
-  const { userId, minAge, maxAge, maxDistance, onlyOnline, sortByAI } = req.query;
+            return (
+                <div className="flex flex-col flex-1 pb-28 select-none">
+                    
+                    {/* 1. Telegram Yuqori Navigatsiya Paneli */}
+                    <div className="p-4 flex justify-between items-center bg-black/50 sticky top-0 z-50 backdrop-blur-md">
+                        <button className="flex items-center space-x-1 bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-full text-xs font-medium text-zinc-300 active:scale-95 transition-transform">
+                            <X size={14} />
+                            <span>Yopish</span>
+                        </button>
+                        <span className="text-xl font-bold tracking-tight lowercase">telescope</span>
+                        <div className="flex items-center space-x-2 bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-full text-zinc-300">
+                            <ChevronDown size={16} className="cursor-pointer active:scale-75 transition-transform" />
+                            <div className="w-[1px] h-3 bg-zinc-700"></div>
+                            <MoreHorizontal size={16} className="cursor-pointer active:scale-75 transition-transform" />
+                        </div>
+                    </div>
 
-  const me = await prisma.user.findUnique({ where: { id: parseInt(userId) } });
-  if (!me) return res.status(404).json({ message: "Profil topilmadi" });
+                    {/* 2. Sarlavha qismi */}
+                    <div className="px-4 py-2 flex justify-between items-center">
+                        <h1 className="text-2xl font-bold tracking-wide">Explore</h1>
+                        <button className="text-zinc-400 p-2 hover:text-white transition-colors">
+                            <Grid size={20} />
+                        </button>
+                    </div>
 
-  // Masofa va yosh bo'yicha PostgreSQL qidiruvi
-  let users = await prisma.$queryRaw`
-    SELECT id, name, interests, "isVerified", "lastActive", photos,
-    (6371 * acos(cos(radians(${me.latitude})) * cos(radians(latitude)) * cos(radians(longitude) - radians(${me.longitude})) + sin(radians(${me.latitude})) * sin(radians(latitude)))) AS distance
-    FROM "User"
-    WHERE id != ${me.id} AND "isUnder18" = false
-  `;
+                    {/* 3. Gorizontal Filtrlar (Kategoriyalar) */}
+                    <div className="flex items-center gap-2 px-4 py-3 overflow-x-auto no-scrollbar">
+                        <button className="p-2.5 bg-zinc-900 border border-zinc-800 rounded-full text-zinc-400 active:scale-90 transition-transform">
+                            <Search size={16} />
+                        </button>
+                        <button className="flex items-center space-x-1.5 bg-white text-black px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap shadow-md">
+                            <Flame size={14} className="fill-black" />
+                            <span>Trending</span>
+                        </button>
+                        <button className="flex items-center space-x-1.5 bg-zinc-900 border border-zinc-800 text-zinc-300 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap active:scale-95 transition-transform">
+                            <Diamond size={14} className="text-cyan-400 fill-cyan-400/20" />
+                            <span>Most Popular</span>
+                        </button>
+                        <button className="flex items-center space-x-1.5 bg-zinc-900 border border-zinc-800 text-zinc-300 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap active:scale-95 transition-transform">
+                            <Sparkles size={14} className="text-amber-400 fill-amber-400/20" />
+                            <span>New</span>
+                        </button>
+                    </div>
 
-  // 🤖 AI Profil tavsiyalari (Qiziqishlar mosligiga qarab saralash)
-  if (sortByAI === 'true') {
-    users.sort((a, b) => {
-      const commonA = a.interests.filter(i => me.interests.includes(i)).length;
-      const commonB = b.interests.filter(i => me.interests.includes(i)).length;
-      return commonB - commonA; // Qiziqishi ko'p mos kelganlar tepaga chiqadi
-    });
-  }
+                    {/* 4. Model Kartochkalari Grid Paneli */}
+                    <div className="px-4 py-2 grid grid-cols-2 gap-3 flex-1">
+                        {models.map((model) => (
+                            <div key={model.id} className="relative aspect-[3/4.2] rounded-2xl overflow-hidden bg-zinc-900 group active:scale-[0.98] transition-all duration-200 border border-zinc-800/50">
+                                <img 
+                                    src={model.img} 
+                                    alt={model.name} 
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    loading="lazy"
+                                />
+                                {/* Gradient soya effekti */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
+                                
+                                {/* Model ismi yozilgan tugma */}
+                                <div className="absolute bottom-3 left-3 right-3">
+                                    <span className="bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-xl text-[11px] font-semibold tracking-wide inline-block border border-white/10 text-white truncate max-w-full">
+                                        {model.name}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
 
-  res.json(users);
-});
+                    {/* 5. Telegram Pastki Navigatsiya Paneli (Floating Glassmorphism) */}
+                    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 w-[90%] max-w-[380px] bg-zinc-900/60 backdrop-blur-xl border border-white/10 rounded-full p-2 flex justify-around items-center z-50 shadow-2xl">
+                        <button className="flex flex-col items-center justify-center text-white py-1 px-4 transition-transform active:scale-90">
+                            <Compass size={18} className="stroke-[2.5]" />
+                            <span className="text-[9px] mt-1 font-semibold tracking-wider uppercase">Explore</span>
+                        </button>
+                        <button className="flex flex-col items-center justify-center text-zinc-500 py-1 px-4 hover:text-zinc-300 transition-colors active:scale-90">
+                            <Film size={18} />
+                            <span className="text-[9px] mt-1 font-medium tracking-wider uppercase">Reels</span>
+                        </button>
+                        <button className="flex flex-col items-center justify-center text-zinc-500 py-1 px-4 hover:text-zinc-300 transition-colors active:scale-90">
+                            <User size={18} />
+                            <span className="text-[9px] mt-1 font-medium tracking-wider uppercase">Profile</span>
+                        </button>
+                    </div>
 
-// ❤️ LIKE VA MATCH TIZIMI
-app.post('/api/like', async (req, res) => {
-  const { likerId, likedId, isSuper } = req.body;
+                </div>
+            );
+        }
 
-  // 🏆 PREMIUM CHEKLOVI (Oddiy foydalanuvchilar super like bosa olmaydi)
-  const user = await prisma.user.findUnique({ where: { id: likerId } });
-  if (isSuper && !user.isPremium) {
-    return res.status(403).json({ message: "Super Like faqat Premium (⭐) a'zolar uchun!" });
-  }
-
-  const newLike = await prisma.like.create({
-    data: { likerId, likedId, isSuper }
-  });
-
-  // Qarshi tomondan like bormi? (Match tekshirish)
-  const mutualLike = await prisma.like.findUnique({
-    where: { likerId_likedId: { likerId: likedId, likedId: likerId } }
-  });
-
-  if (mutualLike) {
-    const match = await prisma.match.create({
-      data: { user1Id: Math.min(likerId, likedId), user2Id: Math.max(likerId, likedId) }
-    });
-    
-    // 🔔 BILDIRISHNOMA (Real-time xabar yuborish)
-    io.to(`user_${likerId}`).emit('notification', { type: 'MATCH', message: 'Yangi Match! 🎉' });
-    io.to(`user_${likedId}`).emit('notification', { type: 'MATCH', message: 'Yangi Match! 🎉' });
-
-    return res.json({ isMatch: true, match });
-  }
-
-  res.json({ isMatch: false, message: "Like saqlandi" });
-});
-
-// 🏆 PREMIUM: Kim sizni yoqtirganini ko'rish
-app.get('/api/premium/who-liked-me', async (req, res) => {
-  const { userId } = req.query;
-  const user = await prisma.user.findUnique({ where: { id: parseInt(userId) } });
-
-  if (!user.isPremium) {
-    return res.status(403).json({ message: "Bu funksiya faqat Premium foydalanuvchilar uchun" });
-  }
-
-  const likes = await prisma.like.findMany({
-    where: { likedId: user.id },
-    include: { liker: true }
-  });
-  res.json(likes);
-});
-
-// 💬 CHAT MULOQOTI
-app.post('/api/chat/send', async (req, res) => {
-  const { senderId, receiverId, text, mediaUrl } = req.body;
-
-  // AI kontent filtri qo'llaniladi
-  const cleanText = filterBadWords(text);
-
-  const message = await prisma.message.create({
-    data: { senderId, receiverId, text: cleanText, mediaUrl }
-  });
-
-  // 🔔 Yangi xabar bildirishnomasi
-  io.to(`user_${receiverId}`).emit('message', message);
-  res.json(message);
-});
-
-// 🎬 REELS (Qisqa videolar)
-app.get('/api/reels', async (req, res) => {
-  // Algoritm bo'yicha eng ko'p ko'rilgan reelslarni tavsiya qilish
-  const reels = await prisma.reel.findMany({
-    orderBy: { likesCount: 'desc' },
-    include: { user: true }
-  });
-  res.json(reels);
-});
-
-// 🛡️ XAVFSIZLIK: Bloklash va Shikoyat
-app.post('/api/security/block', async (req, res) => {
-  const { blockerId, blockedId } = req.body;
-  const block = await prisma.block.create({ data: { blockerId, blockedId } });
-  res.json({ message: "Foydalanuvchi muvaffaqiyatli bloklandi", block });
-});
-
-// 📹 WEB RTC (Video chat va Tasodifiy Ruletka ulanishi)
-io.on('connection', (socket) => {
-  socket.on('join-room', (userId) => {
-    socket.join(`user_${userId}`);
-  });
-
-  // Video qo'ng'iroq signallari (WebRTC peer-to-peer ulanish uchun)
-  socket.on('video-call-offer', ({ to, offer }) => {
-    io.to(`user_${to}`).emit('video-call-offer', { from: socket.id, offer });
-  });
-
-  socket.on('video-call-answer', ({ to, answer }) => {
-    io.to(`user_${to}`).emit('video-call-answer', { answer });
-  });
-
-  // Tasodifiy video chat ruletka tizimi
-  socket.on('join-roulette', (userId) => {
-    socket.join('roulette_pool');
-    // Pool ichidan tasodifiy boshqa foydalanuvchini juftlik qilish logikasi shu yerda boshqariladi
-  });
-});
-
-server.listen(3000, () => console.log('Dating App Backend running on port 3000'));
+        // Ilovani ekranga chiqarish
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
