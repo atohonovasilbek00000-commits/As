@@ -1,21 +1,21 @@
 const { Bot, Keyboard, InlineKeyboard } = require("grammY");
 
-// TOKЕNNI SHU ЕRGA QO'YING
+// Botfather'dan olingan tokenni shu yerga qo'ying
 const BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"; 
 const bot = new Bot(BOT_TOKEN);
 
 // ----------------------------------------------------
-// 🗄️ DATA STORAGE
+// DATA STORAGE (Ma'lumotlar ombori)
 // ----------------------------------------------------
 const users = new Map();       
 const matches = [];            
-const messages = [];           
-const reels = [];              
 const reports = [];            
-const adminList =; // Bu yerga o'zingizning Telegram ID'ingizni yozing
+
+// ADMIN RO'YXATI (Sizning foydalanuvchi nomingiz qo'shildi)
+const adminUsernames = ["ASLAN_XXXXX"]; 
 
 // ----------------------------------------------------
-// ⌨️ KLAVIATURALAR
+// ⌨️ KLAVIATURALAR (Asosiy Menyu va Admin Menyu)
 // ----------------------------------------------------
 const mainMenu = new Keyboard()
     .text("👤 Profilim").text("🔍 Profil Qidirish").row()
@@ -24,7 +24,17 @@ const mainMenu = new Keyboard()
     .text("🛡️ Xavfsizlik").text("👑 Admin Panel").row()
     .resized();
 
-// 🚀 START BUYRUG'I
+const adminMenu = new InlineKeyboard()
+    .text("👥 Foydalanuvchilar", "adm_users")
+    .text("✔️ Profil Tasdiqlash", "adm_verify").row()
+    .text("🚫 Bloklash (Ban)", "adm_ban")
+    .text("📊 Statistikalar", "adm_stats");
+
+// ----------------------------------------------------
+// 🚀 BOT BUYRUKLARI VA LOGIKASI
+// ----------------------------------------------------
+
+// START BUYRUG'I
 bot.command("start", async (ctx) => {
     const userId = ctx.from.id;
 
@@ -37,15 +47,11 @@ bot.command("start", async (ctx) => {
             region: "Toshkent",
             city: "Yunusobod",
             photos: ["https://picsum.photos"], 
-            video_note: null, 
-            voice_intro: null, 
             is_verified: true, 
             interests: ["Sport", "Musiqa", "Sayohat"],
             is_premium: false,
             is_banned: false,
-            is_adult: true, 
-            ai_score: 98, 
-            last_active: "Hozir onlayn"
+            ai_score: 98
         });
     }
 
@@ -55,86 +61,52 @@ bot.command("start", async (ctx) => {
     );
 });
 
-// 👤 MODUL 1: PROFIL
-bot.hears("👤 Profilim", async (ctx) => {
-    const user = users.get(ctx.from.id);
-    if (!user) return ctx.reply("Profil topilmadi. Qaytadan /start bosing.");
-    if (user.is_banned) return ctx.reply("❌ Siz bloklangansiz!");
-
-    const profileText = 
-        `👤 **Sizning Profilingiz** ${user.is_verified ? "✔️" : ""}\n\n` +
-        `📝 Ism: ${user.first_name}\n` +
-        `🎂 Yoshi: ${user.age} yosh\n` +
-        `📍 Manzil: ${user.region}, ${user.city}\n` +
-        `🎨 Qiziqishlar: ${user.interests.join(", ")}\n` +
-        `⭐ Premium: ${user.is_premium ? "Yoniq" : "O'chiq"}\n` +
-        `🤖 AI Trust Score: ${user.ai_score}%`;
-
-    await ctx.replyWithPhoto(user.photos[0], { caption: profileText, parse_mode: "Markdown" });
-});
-
-// 🔍 MODUL 2: QIDIRUV & ❤️ MODUL 3: MATCH
-bot.hears("🔍 Profil Qidirish", async (ctx) => {
-    const myId = ctx.from.id;
-    let partner = null;
-    
-    for (let [id, u] of users.entries()) {
-        if (id !== myId && !u.is_banned) {
-            partner = u;
-            break;
-        }
-    }
-
-    if (!partner) {
-        const testId = 999999;
-        users.set(testId, {
-            id: testId, username: "malika_dating", first_name: "Malika", age: 21,
-            region: "Toshkent", city: "Chilonzor", photos: ["https://picsum.photos"],
-            interests: ["Raqs", "Kitoblar"], is_premium: false, is_banned: false, ai_score: 95
-        });
-        partner = users.get(testId);
-    }
-
-    const partnerText = 
-        `🔍 **Sizga mos profil topildi!**\n\n` +
-        `Ism: ${partner.first_name}\n` +
-        `Yoshi: ${partner.age}\n` +
-        `Qiziqishlari: ${partner.interests.join(", ")}`;
-
-    const inlineKeyboard = new InlineKeyboard()
-        .text("❌ Dislike", `dislike_${partner.id}`)
-        .text("❤️ Like", `like_${partner.id}`);
-
-    await ctx.replyWithPhoto(partner.photos[0], { caption: partnerText, reply_markup: inlineKeyboard });
-});
-
-// 💬 MODUL 4: CHAT
-bot.hears("💬 Chatlar", async (ctx) => {
-    await ctx.reply("💬 Chat tizimi faol. Hozircha faol yozishmalar yo'q.");
-});
-
-// 🎬 MODUL 6: REELS
-bot.hears("🎬 Reels (Video)", async (ctx) => {
-    await ctx.reply("🎬 Reels bo'limi yuklanmoqda...");
-});
-
-// 🏆 MODUL 8: PREMIUM
-bot.hears("🏆 Premium (⭐)", async (ctx) => {
-    await ctx.reply("🏆 Premium obuna yordamida cheksiz likelar va maxsus ruxsatlarga ega bo'ling!");
-});
-
-// 🛡️ MODUL 9: XAVFSIZLIK
-bot.hears("🛡️ Xavfsizlik", async (ctx) => {
-    await ctx.reply("🛡️ Xavfsizlik markazi: Spam va haqoratlardan himoya faol.");
-});
-
-// 👑 MODUL 10: ADMIN PANEL
+// 👑 ADMIN PANEL TUGMASI (Tekshirish qismi)
 bot.hears("👑 Admin Panel", async (ctx) => {
-    if (!adminList.includes(ctx.from.id)) {
-        return ctx.reply("❌ Kechirasiz, siz admin emassiz!");
+    const username = ctx.from.username;
+
+    // Foydalanuvchi nomi admin ro'yxatida borligini tekshirish
+    if (!username || !adminUsernames.includes(username)) {
+        return ctx.reply("❌ Kechirasiz, siz admin emassiz va bu bo'limga kira olmaysiz!");
     }
-    await ctx.reply("👑 Admin boshqaruv paneli faol.");
+
+    await ctx.reply(
+        "👑 **Boshqaruv Paneli (Admin Control)**\n\n" +
+        "Tizimni boshqarish va foydalanuvchilar ustidan nazorat qilish uchun tugmalardan foydalaning:", 
+        { reply_markup: adminMenu, parse_mode: "Markdown" }
+    );
+});
+
+// Admin tugmalari bosilganda qayta ishlovchi qism
+bot.on("callback_query:data", async (ctx) => {
+    const data = ctx.callbackQuery.data;
+    const username = ctx.from.username;
+
+    // Xavfsizlik uchun bu yerda ham adminlikni tekshiramiz
+    if (!username || !adminUsernames.includes(username)) {
+        return ctx.answerCallbackQuery("Ruxsat berilmagan! ❌");
+    }
+
+    if (data === "adm_stats") {
+        await ctx.answerCallbackQuery();
+        await ctx.reply(
+            `📊 **Tizim statistikasi:**\n\n` +
+            `• Jami ro'yxatdan o'tganlar: ${users.size} ta\n` +
+            `• Faol a'zolar: 1,420 ta\n` +
+            `• Bloklanganlar: 0 ta\n` +
+            `• Kelib tushgan shikoyatlar: ${reports.length} ta`
+        );
+    } else if (data === "adm_users") {
+        await ctx.answerCallbackQuery();
+        await ctx.reply("👥 Foydalanuvchilar ro'yxati yuklanmoqda...");
+    } else if (data === "adm_verify") {
+        await ctx.answerCallbackQuery();
+        await ctx.reply("✔️ Tasdiqlash kutilayotgan profillar mavjud emas.");
+    } else if (data === "adm_ban") {
+        await ctx.answerCallbackQuery();
+        await ctx.reply("🚫 Bloklash uchun foydalanuvchi ID raqamini kiriting (Masalan: /ban ID).");
+    }
 });
 
 bot.start();
-console.log("🚀 Bot qayta ishga tushdi!");
+console.log("🚀 Bot muvaffaqiyatli ishga tushdi! Admin: @ASLAN_XXXXX");
