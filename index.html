@@ -161,3 +161,101 @@
     </script>
 </body>
 </html>
+from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import sqlite3
+from typing import List
+
+app = FastAPI()
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# BAZADA IJTIMOIY TARMOQ JADVALINI YARATISH
+def init_social_db():
+    conn = sqlite3.connect('social.db')
+    cursor = conn.cursor()
+    # Instagram/TikTok postlari jadvali
+    cursor.execute('''CREATE TABLE IF NOT EXISTS posts 
+        (post_id INTEGER PRIMARY KEY AUTO_INCREMENT, user_id INTEGER, media_type TEXT, media_url TEXT, caption TEXT, likes_count INTEGER DEFAULT 0)''')
+    # Odnoklassniki Mehmonlar jadvali
+    cursor.execute('''CREATE TABLE IF NOT EXISTS guests 
+        (owner_id INTEGER, guest_id INTEGER, visit_time TEXT)''')
+    conn.commit()
+    conn.close()
+
+init_social_db()
+
+class LikeModel(BaseModel):
+    user_id: int
+    post_id: int
+
+class VisitModel(BaseModel):
+    owner_id: int
+    guest_id: int
+    time_str: str
+
+# 1. INSTAGRAM: Layk bosish va hisoblash
+@app.post("/api/social/like")
+async def like_post(data: LikeModel):
+    conn = sqlite3.connect('social.db')
+    cursor = conn.cursor()
+    cursor.execute("UPDATE posts SET likes_count = likes_count + 1 WHERE post_id=?", (data.post_id,))
+    conn.commit()
+    conn.close()
+    return {"status": "success"}
+
+# 2. TIKTOK: Reels kontentlarini olish
+@app.get("/api/social/reels")
+async def get_tiktok_reels():
+    conn = sqlite3.connect('social.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM posts WHERE media_type='reels' ORDER BY RANDOM() LIMIT 5")
+    rows = cursor.fetchall()
+    conn.close()
+    return [{"post_id": r[0], "media_url": r[3], "caption": r[4]} for r in rows]
+
+# 3. ODNOKLASSNIKI: Profilga kirganda "Mehmon" sifatida yozib qolish
+@app.post("/api/social/visit")
+async def log_guest(data: VisitModel):
+    conn = sqlite3.connect('social.db')
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO guests VALUES (?, ?, ?)", (data.owner_id, data.guest_id, data.time_str))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": "Siz profil mehmoni sifatida qayd etildingiz."}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+import asyncio
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import CommandStart
+from aiogram.types import WebAppInfo
+
+BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
+WEB_APP_URL = "https://your-social-frontend.com"
+
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher()
+
+@dp.message(CommandStart())
+async def start_handler(message: types.Message):
+    kb = [
+        [types.InlineKeyboardButton(text="Telescope Social Tarmoqni Ochish 🌐", web_app=WebAppInfo(url=WEB_APP_URL))]
+    ]
+    keyboard = types.InlineKeyboardMarkup(inline_keyboard=kb)
+    
+    await message.answer(
+        f"Salom, {message.from_user.full_name}!\n\n"
+        "3 tasi 1 da bo'lgan yangi avlod ijtimoiy tarmog'iga xush kelibsiz:\n"
+        "• 📸 Instagram Feed (Foto, Like)\n"
+        "• 🎵 TikTok Reels (Vertikal qisqa videolar)\n"
+        "• 🧡 OK.ru (Mehmonlar va Guruhlar).",
+        reply_markup=keyboard
+    )
+
+async def main():
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
