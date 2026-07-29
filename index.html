@@ -2,260 +2,160 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telescope Social Network</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
+    <title>Telescope - Skaner va Tanishing</title>
+    <!-- Telegram WebApp JS -->
     <script src="https://telegram.org"></script>
     <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #0d0d0d; color: #ffffff; margin: 0; padding: 0; padding-bottom: 80px;
+            background-color: #0d0d0d; color: #ffffff; margin: 0; padding: 16px; padding-bottom: 100px;
         }
-        .header { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #121212; position: sticky; top: 0; z-index: 100; }
-        h1 { font-size: 22px; margin: 0; font-weight: bold; background: linear-gradient(45deg, #f09433, #e1306c, #833ab4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header-section { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .header-title { font-size: 24px; font-weight: 700; margin: 0; }
         
-        /* Tab Tizimi (Instagram / TikTok / OK) */
-        .tabs { display: flex; background: #1a1a1a; padding: 4px; border-bottom: 1px solid #262626; }
-        .tab-btn { flex: 1; background: none; border: none; color: #8e8e93; padding: 12px; font-weight: bold; cursor: pointer; font-size: 13px; }
-        .tab-btn.active { color: #ffffff; border-bottom: 2px solid #2481cc; }
-        .feed-section { display: none; padding: 16px; }
-        .feed-section.active { display: block; }
+        /* Ro'yxatdan o'tish va Pasport yuklash */
+        .reg-card { background-color: #1c1c1e; padding: 16px; border-radius: 16px; margin-bottom: 20px; border: 1px solid #2c2c2e; }
+        .reg-card h3 { margin-top: 0; color: #2481cc; font-size: 16px; }
+        .upload-btn {
+            display: block; width: 100%; padding: 14px; background: linear-gradient(135deg, #2481cc, #0056b3);
+            color: white; text-align: center; border-radius: 12px; cursor: pointer; font-weight: bold; margin-bottom: 16px;
+        }
+        .input-group { margin-bottom: 12px; }
+        .input-group label { display: block; font-size: 12px; color: #8e8e93; margin-bottom: 4px; }
+        .input-group input {
+            width: 100%; padding: 12px; background-color: #0d0d0d; border: 1px solid #3a3a3c;
+            border-radius: 8px; color: white; box-sizing: border-box; font-size: 14px;
+        }
 
-        /* 1. INSTAGRAM LENTA */
-        .insta-post { background: #121212; border-radius: 12px; margin-bottom: 20px; overflow: hidden; border: 1px solid #262626; }
-        .post-header { display: flex; align-items: center; padding: 12px; gap: 10px; }
-        .avatar { width: 35px; height: 35px; border-radius: 50%; background: #333; object-fit: cover; }
-        .post-user { font-weight: 600; font-size: 14px; }
-        .post-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
-        .post-actions { padding: 12px; display: flex; gap: 16px; font-size: 20px; }
-        .post-likes { padding: 0 12px 12px 12px; font-size: 13px; font-weight: bold; }
+        /* Filtrlar / Teglar paneli */
+        .filters-container { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 16px; padding-bottom: 4px; }
+        .filters-container::-webkit-scrollbar { display: none; }
+        .search-btn { background-color: #1c1c1e; border: none; width: 36px; height: 36px; border-radius: 50%; color: #ffffff; display:flex; align-items:center; justify-content:center;}
+        .filter-tag {
+            background-color: #1c1c1e; color: #ffffff; border: none; padding: 8px 14px;
+            border-radius: 20px; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; white-space: nowrap;
+        }
+        .filter-tag.active { background-color: #ffffff; color: #000000; }
 
-        /* 2. TIKTOK REELS (To'liq ekranli video) */
-        .tiktok-container { height: calc(100vh - 120px); overflow-y: scroll; snap-type: y mandatory; }
-        .tiktok-video-box { height: 100%; width: 100%; snap-align: start; position: relative; background: #000; }
-        .tiktok-video { width: 100%; height: 100%; object-fit: cover; }
-        .tiktok-sidebar { position: absolute; right: 16px; bottom: 100px; display: flex; flex-direction: column; gap: 20px; align-items: center; z-index: 10; }
-        .side-icon { background: rgba(0,0,0,0.5); border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; }
+        /* Grid va Model Kartochkalari */
+        .grid-wrapper { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .model-card { position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 3 / 4; background-color: #1c1c1e; }
+        .model-card img { width: 100%; height: 100%; object-fit: cover; }
+        .model-details { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%); padding: 14px; }
+        .model-name { font-size: 14px; font-weight: 600; margin: 0; }
 
-        /* 3. ODNOKLASSNIKI (Mehmonlar va Guruhlar) */
-        .ok-card { background: #1a1a1a; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #e67e22; }
-        .ok-title { color: #e67e22; font-weight: bold; margin-top: 0; }
-        .user-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #262626; }
-
-        /* Bottom Navigation */
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #121212; display: flex; justify-content: space-around; padding: 12px; border-top: 1px solid #262626; z-index: 100; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; color: #8e8e93; text-decoration: none; font-size: 11px; gap: 4px; }
-        .nav-item.active { color: white; }
+        /* Pastki Menyu */
+        .nav-bar-bottom {
+            position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+            background-color: rgba(28, 28, 30, 0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            display: flex; justify-content: space-around; width: calc(100% - 32px); max-width: 400px; padding: 10px 0; border-radius: 32px; border: 1px solid rgba(255, 255, 255, 0.05); z-index: 999;
+        }
+        .nav-button { display: flex; flex-direction: column; align-items: center; color: #8e8e93; text-decoration: none; font-size: 11px; gap: 4px; flex: 1; cursor: pointer; }
+        .nav-button.active { color: #ffffff; }
     </style>
 </head>
 <body>
 
-    <!-- Sarlavha va Profil rasmi -->
-    <div class="header">
-        <h1>Telescope Social</h1>
-        <img src="https://unsplash.com" class="avatar" onclick="switchSection('ok-section')">
+    <div class="header-section">
+        <h1 class="header-title">Kashf qilish</h1>
+        <div>📊</div>
     </div>
 
-    <!-- Instagram / TikTok / OK Navigatsiya Tablari -->
-    <div class="tabs">
-        <button class="tab-btn active" id="btn-insta" onclick="switchTab('insta-section')">📸 Instagram</button>
-        <button class="tab-btn" id="btn-tiktok" onclick="switchTab('tiktok-section')">🎵 TikTok</button>
-        <button class="tab-btn" id="btn-ok" onclick="switchTab('ok-section')">🧡 OK.ru</button>
-    </div>
-
-    <!-- 1. INSTAGRAM BULIMI -->
-    <div id="insta-section" class="feed-section active">
-        <!-- Post 1 -->
-        <div class="insta-post">
-            <div class="post-header">
-                <img src="https://unsplash.com" class="avatar">
-                <span class="post-user">brandi_andrews</span>
-            </div>
-            <img src="https://unsplash.com" class="post-img">
-            <div class="post-actions">
-                <span onclick="likePost(1)">❤️</span> <span>💬</span> <span>🚀</span>
-            </div>
-            <div class="post-likes"><span id="likes-1">1,240</span> likes</div>
+    <!-- 1. Pasport orqali o'zbekcha ro'yxatdan o'tish bo'limi -->
+    <div class="reg-card">
+        <h3>🔒 Xavfsiz ID Ro'yxatdan o'tish</h3>
+        <label class="upload-btn">
+            📷 Pasportni rasmga olish
+            <input type="file" id="passport-file" accept="image/*" style="display: none;" onchange="scanPassport()">
+        </label>
+        
+        <div class="input-group">
+            <label>Ism Familiya (Avtomat)</label>
+            <input type="text" id="inp-name" readonly placeholder="Pasport kutilmoqda...">
+        </div>
+        <div class="input-group">
+            <label>Tug'ilgan sana (Avtomat)</label>
+            <input type="text" id="inp-dob" readonly placeholder="Pasport kutilmoqda...">
+        </div>
+        <div class="input-group">
+            <label>Pasport Seriya raqami (Avtomat)</label>
+            <input type="text" id="inp-passport" readonly placeholder="Pasport kutilmoqda...">
+        </div>
+        <div class="input-group">
+            <label>Jinsi (Avtomat)</label>
+            <input type="text" id="inp-gender" readonly placeholder="Pasport kutilmoqda...">
         </div>
     </div>
 
-    <!-- 2. TIKTOK BULIMI -->
-    <div id="tiktok-section" class="feed-section">
-        <div class="tiktok-container">
-            <div class="tiktok-video-box">
-                <video class="tiktok-video" src="https://mixkit.co" loop autoplay muted playsinline></video>
-                <div class="tiktok-sidebar">
-                    <div class="side-icon" onclick="alert('Liked!')">❤️</div>
-                    <div class="side-icon" onclick="alert('Comment!')">💬</div>
-                    <div class="side-icon" onclick="alert('Shared!')">🔗</div>
-                </div>
-            </div>
-        </div>
+    <!-- 2. Filtrlar -->
+    <div class="filters-container">
+        <button class="search-btn">🔍</button>
+        <button class="filter-tag active">🔥 Trenddagilar</button>
+        <button class="filter-tag">💎 Mashhurlar</button>
+        <button class="filter-tag">💫 Yangilar</button>
     </div>
 
-    <!-- 3. ODNOKLASSNIKI BULIMI -->
-    <div id="ok-section" class="feed-section">
-        <!-- Mehmonlar Tizimi -->
-        <div class="ok-card">
-            <p class="ok-title">👥 Mening mehmonlarim (Gosti)</p>
-            <div class="user-row">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <img src="https://unsplash.com" class="avatar">
-                    <span>Alex Mucci (Bugun 18:40)</span>
-                </div>
-                <span style="color:#e67e22;">5+</span>
-            </div>
+    <!-- 3. Modellar panjarasi -->
+    <div class="grid-wrapper">
+        <div class="model-card">
+            <img src="https://unsplash.com">
+            <div class="model-details"><p class="model-name">Brandi Andrews</p></div>
         </div>
-
-        <!-- Guruhlar va Sinfdoshlar -->
-        <div class="ok-card">
-            <p class="ok-title">🎒 Sinfdoshlar (Odnoklassniki)</p>
-            <div class="user-row"><span>Toshkent 51-maktab (2018-yil bitiruvchilari)</span> <span>➡️</span></div>
-            <div class="user-row"><span>Andijon Davlat Universiteti</span> <span>➡️</span></div>
+        <div class="model-card">
+            <img src="https://unsplash.com">
+            <div class="model-details"><p class="model-name">Chimocurves</p></div>
         </div>
     </div>
 
     <!-- Pastki Navigatsiya -->
-    <div class="bottom-nav">
-        <a href="#" class="nav-item active"><span>🏠</span><span>Lenta</span></a>
-        <a href="#" onclick="openCreatePost()" class="nav-item"><span>➕</span><span>Yaratish</span></a>
-        <a href="#" class="nav-item"><span>👤</span><span>Profil</span></a>
+    <div class="nav-bar-bottom">
+        <div class="nav-button active"><span>🏠</span><span>Asosiy</span></div>
+        <div class="nav-button"><span>▶️</span><span>Reels</span></div>
+        <div class="nav-button"><span>👤</span><span>Profil</span></div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        const BACKEND_URL = "https://your-backend-server.com";
+        // O'zingizning server ssilkangizni qo'ying
+        const BACKEND_URL = "https://your-backend-server.com"; 
 
-        // Tablarni almashtirish (Instagram / TikTok / OK)
-        function switchTab(sectionId) {
-            document.querySelectorAll('.feed-section').forEach(sec => sec.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            
-            document.getElementById(sectionId).classList.add('active');
-            event.target.classList.add('active');
-        }
+        async function scanPassport() {
+            const fileInput = document.getElementById('passport-file');
+            if (!fileInput.files.length) return;
 
-        // Instagram Postga Layk Bosish
-        async function likePost(postId) {
-            const likeSpan = document.getElementById(`likes-${postId}`);
-            likeSpan.innerText = (parseInt(likeSpan.innerText.replace(',', '')) + 1).toLocaleString();
-            
-            await fetch(`${BACKEND_URL}/api/social/like`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ user_id: tg.initDataUnsafe?.user?.id || 0, post_id: postId })
-            });
-        }
+            tg.MainButton.setText("Pasport tahlil qilinmoqda... ⏳").show();
 
-        // Yangi post/video yuklash oynasi
-        function openCreatePost() {
-            tg.showPopup({
-                title: 'Yangi Kontent',
-                message: 'Nima yuklamoqchisiz?',
-                buttons: [{id: 'post', text: '📸 Instagram Post'}, {id: 'reels', text: '🎵 TikTok Reels'}]
-            }, function(btnId) {
-                if(btnId) alert(btnId + " yuklash tizimi ochildi.");
-            });
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/v1/passport-ocr`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('inp-name').value = data.full_name;
+                    document.getElementById('inp-dob').value = data.birth_date;
+                    document.getElementById('inp-passport').value = data.passport_number;
+                    document.getElementById('inp-gender').value = data.gender;
+                    
+                    tg.MainButton.setText("Muvaffaqiyatli ro'yxatdan o'tdingiz! ✅");
+                    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                } else {
+                    alert("Pasportni o'qib bo'lmadi, iltimos aniqroq rasmga oling.");
+                    tg.MainButton.hide();
+                }
+            } catch (error) {
+                alert("Serverga ulanishda xatolik.");
+                tg.MainButton.hide();
+            }
         }
     </script>
 </body>
 </html>
-from fastapi import FastAPI, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import sqlite3
-from typing import List
-
-app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-
-# BAZADA IJTIMOIY TARMOQ JADVALINI YARATISH
-def init_social_db():
-    conn = sqlite3.connect('social.db')
-    cursor = conn.cursor()
-    # Instagram/TikTok postlari jadvali
-    cursor.execute('''CREATE TABLE IF NOT EXISTS posts 
-        (post_id INTEGER PRIMARY KEY AUTO_INCREMENT, user_id INTEGER, media_type TEXT, media_url TEXT, caption TEXT, likes_count INTEGER DEFAULT 0)''')
-    # Odnoklassniki Mehmonlar jadvali
-    cursor.execute('''CREATE TABLE IF NOT EXISTS guests 
-        (owner_id INTEGER, guest_id INTEGER, visit_time TEXT)''')
-    conn.commit()
-    conn.close()
-
-init_social_db()
-
-class LikeModel(BaseModel):
-    user_id: int
-    post_id: int
-
-class VisitModel(BaseModel):
-    owner_id: int
-    guest_id: int
-    time_str: str
-
-# 1. INSTAGRAM: Layk bosish va hisoblash
-@app.post("/api/social/like")
-async def like_post(data: LikeModel):
-    conn = sqlite3.connect('social.db')
-    cursor = conn.cursor()
-    cursor.execute("UPDATE posts SET likes_count = likes_count + 1 WHERE post_id=?", (data.post_id,))
-    conn.commit()
-    conn.close()
-    return {"status": "success"}
-
-# 2. TIKTOK: Reels kontentlarini olish
-@app.get("/api/social/reels")
-async def get_tiktok_reels():
-    conn = sqlite3.connect('social.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM posts WHERE media_type='reels' ORDER BY RANDOM() LIMIT 5")
-    rows = cursor.fetchall()
-    conn.close()
-    return [{"post_id": r[0], "media_url": r[3], "caption": r[4]} for r in rows]
-
-# 3. ODNOKLASSNIKI: Profilga kirganda "Mehmon" sifatida yozib qolish
-@app.post("/api/social/visit")
-async def log_guest(data: VisitModel):
-    conn = sqlite3.connect('social.db')
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO guests VALUES (?, ?, ?)", (data.owner_id, data.guest_id, data.time_str))
-    conn.commit()
-    conn.close()
-    return {"status": "success", "message": "Siz profil mehmoni sifatida qayd etildingiz."}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-import asyncio
-from aiogram import Bot, Dispatcher, types
-from aiogram.filters import CommandStart
-from aiogram.types import WebAppInfo
-
-BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
-WEB_APP_URL = "https://your-social-frontend.com"
-
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
-
-@dp.message(CommandStart())
-async def start_handler(message: types.Message):
-    kb = [
-        [types.InlineKeyboardButton(text="Telescope Social Tarmoqni Ochish 🌐", web_app=WebAppInfo(url=WEB_APP_URL))]
-    ]
-    keyboard = types.InlineKeyboardMarkup(inline_keyboard=kb)
-    
-    await message.answer(
-        f"Salom, {message.from_user.full_name}!\n\n"
-        "3 tasi 1 da bo'lgan yangi avlod ijtimoiy tarmog'iga xush kelibsiz:\n"
-        "• 📸 Instagram Feed (Foto, Like)\n"
-        "• 🎵 TikTok Reels (Vertikal qisqa videolar)\n"
-        "• 🧡 OK.ru (Mehmonlar va Guruhlar).",
-        reply_markup=keyboard
-    )
-
-async def main():
-    await dp.start_polling(bot)
-
-if __name__ == "__main__":
-    asyncio.run(main())
