@@ -1,21 +1,21 @@
-const { Bot, Keyboard, InlineKeyboard, Context } = require("grammY");
+const { Bot, Keyboard, InlineKeyboard } = require("grammY");
 
 // TOKЕNNI SHU ЕRGA QO'YING
 const BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"; 
 const bot = new Bot(BOT_TOKEN);
 
 // ----------------------------------------------------
-// 🗄️ IN-MEMORY DATA STORAGE (Ma'lumotlar bazasi o'rniga)
+// 🗄️ DATA STORAGE
 // ----------------------------------------------------
-const users = new Map();       // Foydalanuvchilar profillari
-const matches = [];            // Like / Super Like-lar
-const messages = [];           // Chat xabarlari
-const reels = [];              // Qisqa videolar bo'limi
-const reports = [];            // Shikoyatlar (Xavfsizlik)
-const adminList =;  // Admin Telegram ID ro'yxati (o'zingiznikini qo'ying)
+const users = new Map();       
+const matches = [];            
+const messages = [];           
+const reels = [];              
+const reports = [];            
+const adminList =; // Bu yerga o'zingizning Telegram ID'ingizni yozing
 
 // ----------------------------------------------------
-// ⌨️ KLAVIATURALAR (Asosiy Menyu)
+// ⌨️ KLAVIATURALAR
 // ----------------------------------------------------
 const mainMenu = new Keyboard()
     .text("👤 Profilim").text("🔍 Profil Qidirish").row()
@@ -24,49 +24,41 @@ const mainMenu = new Keyboard()
     .text("🛡️ Xavfsizlik").text("👑 Admin Panel").row()
     .resized();
 
-// ----------------------------------------------------
 // 🚀 START BUYRUG'I
-// ----------------------------------------------------
 bot.command("start", async (ctx) => {
     const userId = ctx.from.id;
 
-    // Soddalashtirilgan ro'yxatdan o'tish (Profil yaratish)
     if (!users.has(userId)) {
         users.set(userId, {
             id: userId,
             username: ctx.from.username || "username_yoq",
             first_name: ctx.from.first_name,
-            age: 22, // Standart qiymat (Profil sozlamalarida o'zgaradi)
+            age: 22, 
             region: "Toshkent",
             city: "Yunusobod",
-            photos: ["https://picsum.photos"], // Bir nechta rasm (6-10 tagacha)
-            video_note: null, // Qisqa video (15-30 soniya)
-            voice_intro: null, // Ovozli tanishtiruv
-            is_verified: true, // Tasdiqlangan profil (✔️)
+            photos: ["https://picsum.photos"], 
+            video_note: null, 
+            voice_intro: null, 
+            is_verified: true, 
             interests: ["Sport", "Musiqa", "Sayohat"],
             is_premium: false,
             is_banned: false,
-            is_adult: true, // 18+ tasdiqlash
-            ai_score: 98, // AI tomonidan soxtalikni aniqlash foizi
+            is_adult: true, 
+            ai_score: 98, 
             last_active: "Hozir onlayn"
         });
-        
-        // Yangi qo'shilganlar bildirishnomasi
-        console.log(`[🤖 AI/Tizim]: Yangi foydalanuvchi qo'shildi: ${ctx.from.first_name}`);
     }
 
     await ctx.reply(
-        `👋 Salom ${ctx.from.first_name}!\n\nMukammal Tanishuv va Reels platformasiga xush kelibsiz.\n` +
-        `Quyidagi menyudan foydalanib o'z baxtingizni toping!`,
+        `👋 Salom ${ctx.from.first_name}!\n\nTanishuv va Reels platformasiga xush kelibsiz.`,
         { reply_markup: mainMenu }
     );
 });
 
-// ----------------------------------------------------
 // 👤 MODUL 1: PROFIL
-// ----------------------------------------------------
 bot.hears("👤 Profilim", async (ctx) => {
     const user = users.get(ctx.from.id);
+    if (!user) return ctx.reply("Profil topilmadi. Qaytadan /start bosing.");
     if (user.is_banned) return ctx.reply("❌ Siz bloklangansiz!");
 
     const profileText = 
@@ -75,24 +67,17 @@ bot.hears("👤 Profilim", async (ctx) => {
         `🎂 Yoshi: ${user.age} yosh\n` +
         `📍 Manzil: ${user.region}, ${user.city}\n` +
         `🎨 Qiziqishlar: ${user.interests.join(", ")}\n` +
-        `🎙️ Ovozli tanishtiruv: ${user.voice_intro ? "Mavjud 🔊" : "Yuklanmagan ✖️"}\n` +
-        `🎬 Qisqa video (30s): ${user.video_note ? "Sozlangan 📹" : "Yo'q"}\n` +
-        `🟢 Faollik: ${user.last_active}\n` +
         `⭐ Premium: ${user.is_premium ? "Yoniq" : "O'chiq"}\n` +
-        `🤖 AI Trust Score: ${user.ai_score}% (Haqiqiy profil)`;
+        `🤖 AI Trust Score: ${user.ai_score}%`;
 
-    // Bir nechta rasmlardan birinchisini yuborish
     await ctx.replyWithPhoto(user.photos[0], { caption: profileText, parse_mode: "Markdown" });
 });
 
-// ----------------------------------------------------
-// 🔍 MODUL 2: QIDIRUV & ❤️ MODUL 3: TANISHUV (Match)
-// ----------------------------------------------------
+// 🔍 MODUL 2: QIDIRUV & ❤️ MODUL 3: MATCH
 bot.hears("🔍 Profil Qidirish", async (ctx) => {
     const myId = ctx.from.id;
-    
-    // O'zidan boshqa tasodifiy foydalanuvchini topish (Viloyat va Yosh bo'yicha filter simulyatsiyasi)
     let partner = null;
+    
     for (let [id, u] of users.entries()) {
         if (id !== myId && !u.is_banned) {
             partner = u;
@@ -101,7 +86,6 @@ bot.hears("🔍 Profil Qidirish", async (ctx) => {
     }
 
     if (!partner) {
-        // Test rejimida ishlashi uchun sun'iy ikkinchi profil yaratamiz
         const testId = 999999;
         users.set(testId, {
             id: testId, username: "malika_dating", first_name: "Malika", age: 21,
@@ -115,123 +99,42 @@ bot.hears("🔍 Profil Qidirish", async (ctx) => {
         `🔍 **Sizga mos profil topildi!**\n\n` +
         `Ism: ${partner.first_name}\n` +
         `Yoshi: ${partner.age}\n` +
-        `Joylashuv: ${partner.region}, ${partner.city}\n` +
         `Qiziqishlari: ${partner.interests.join(", ")}`;
 
     const inlineKeyboard = new InlineKeyboard()
         .text("❌ Dislike", `dislike_${partner.id}`)
-        .text("❤️ Like", `like_${partner.id}`)
-        .text("⭐ Super Like", `super_${partner.id}`);
+        .text("❤️ Like", `like_${partner.id}`);
 
     await ctx.replyWithPhoto(partner.photos[0], { caption: partnerText, reply_markup: inlineKeyboard });
 });
 
-// Like/Dislike Bosilgandagi tugmalar ishlovi (Match & Bildirishnoma tizimi)
-bot.on("callback_query:data", async (ctx) => {
-    const data = ctx.callbackQuery.data;
-    const myId = ctx.from.id;
-
-    if (data.startsWith("like_") || data.startsWith("super_")) {
-        const targetId = parseInt(data.split("_")[1]);
-        
-        matches.push({ liker: myId, liked: targetId, type: data.split("_")[0] });
-        await ctx.answerCallbackQuery("Sizga bu profil yoqdi! ❤️");
-
-        // 🔔 MODUL 7: BILDIRISHNOMALAR (Simulyatsiya)
-        await ctx.reply("✨ Tizim: Unga bildirishnoma yuborildi!");
-
-        // O'zaro Match (Moslik) tekshiruvi
-        const mutual = matches.find(m => m.liker === targetId && m.liked === myId);
-        if (mutual || targetId === 999999) { // Test uchun avto-match
-            await ctx.reply(`🎉 **Yangi Match!** Siz va ${users.get(targetId).first_name} bir-biringizga yoqdingiz! \n💬 Chat bo'limiga o'ting.`);
-        }
-    } else if (data.startsWith("dislike_")) {
-        await ctx.answerCallbackQuery("O'tkazib yuborildi ⏭️");
-        await ctx.editMessageCaption({ caption: "Keyingi profillarni qidirib ko'ring." });
-    }
-});
-
-// ----------------------------------------------------
 // 💬 MODUL 4: CHAT
-// ----------------------------------------------------
 bot.hears("💬 Chatlar", async (ctx) => {
-    await ctx.reply(
-        `💬 **Chat tizimi faol**\n\n` +
-        `• Matnli xabarlar, Emoji va stikerlar yuborish mumkin.\n` +
-        `• Xabarlarni o'chirish va ovozli xabar (Voice) yo'llash qo'llab quvvatlanadi.\n\n` +
-        `*Hozircha faol chatlar mavjud emas.*`, { parse_mode: "Markdown" }
-    );
+    await ctx.reply("💬 Chat tizimi faol. Hozircha faol yozishmalar yo'q.");
 });
 
-// ----------------------------------------------------
-// 📹 MODUL 5: VIDEO & OVOZLI QO'NG'IROQLAR
-// ----------------------------------------------------
-bot.hears("📹 Video", async (ctx) => {
-    const videoMenu = new InlineKeyboard()
-        .text("📞 Ovozli qo'ng'iroq", "call_voice")
-        .text("📹 Video Chat", "call_video").row()
-        .text("🎲 Tasodifiy video chat (Ruletka)", "roulette");
-
-    await ctx.reply("📹 **Video va Ovozli aloqa markazi**\n\nKim bilan bog'lanmoqchisiz?", {
-        reply_markup: videoMenu,
-        parse_mode: "Markdown"
-    });
-});
-
-// ----------------------------------------------------
-// 🎬 MODUL 6: REELS (Qisqa videolar)
-// ----------------------------------------------------
+// 🎬 MODUL 6: REELS
 bot.hears("🎬 Reels (Video)", async (ctx) => {
-    // 🤖 AI MODUL 11: Tavsiya algoritmi bo'yicha reels chiqarish simulyatsiyasi
-    await ctx.replyWithVideo("https://githubusercontent.com", {
-        caption: "🎬 **Reels bo'limi**\n\n@foydalanuvchi: Mening yangi videom! 🚀\n\n❤️ 1,240 | 💬 42 izoh",
-        reply_markup: new InlineKeyboard()
-            .text("❤️ Like", "reels_like").text("💬 Izoh", "reels_comment").text("🚀 Ulashish", "reels_share"),
-        parse_mode: "Markdown"
-    });
+    await ctx.reply("🎬 Reels bo'limi yuklanmoqda...");
 });
 
-// ----------------------------------------------------
 // 🏆 MODUL 8: PREMIUM
-// ----------------------------------------------------
 bot.hears("🏆 Premium (⭐)", async (ctx) => {
-    const user = users.get(ctx.from.id);
-    
-    await ctx.reply(
-        `🏆 **PREMIUM OBUNA (⭐)**\n\n` +
-        `Imkoniyatlar:\n` +
-        `• 🚫 Reklamasiz foydalanish\n` +
-        `• 🔥 Cheksiz Like bosish imkoniyati\n` +
-        `• 🚀 Profilni qidiruvda yuqoriga chiqarish (Boost)\n` +
-        `• 👀 Kim profilingizni ko'rganini aniqlash\n` +
-        `• ⭐ Profil yonida maxsus Premium belgi\n\n` +
-        `Sizning holatingiz: ${user.is_premium ? "Faol ✅" : "Oddiy foydalanuvchi ✖️"}`,
-        {
-            reply_markup: new InlineKeyboard().text("Sotib olish — $4.99/oy", "buy_premium")
-        }
-    );
+    await ctx.reply("🏆 Premium obuna yordamida cheksiz likelar va maxsus ruxsatlarga ega bo'ling!");
 });
 
-// ----------------------------------------------------
-// 🛡️ MODUL 9: XAVFSIZLIK (Shikoyat va Bloklash)
-// ----------------------------------------------------
+// 🛡️ MODUL 9: XAVFSIZLIK
 bot.hears("🛡️ Xavfsizlik", async (ctx) => {
-    await ctx.reply(
-        `🛡️ **Xavfsizlik va Moderatsiya markazi**\n\n` +
-        `• 🔞 18+ Profil tasdiqlash holati: Faol\n` +
-        `• 🤖 AI Spamdan himoya: Yoqilgan\n\n` +
-        `Agar nomaqbul profilga duch kelsangiz, quyidagi tugmani bosing:`,
-        {
-            reply_markup: new InlineKeyboard().text("⚠️ Profil ustidan shikoyat qilish", "report_user")
-        }
-    );
+    await ctx.reply("🛡️ Xavfsizlik markazi: Spam va haqoratlardan himoya faol.");
 });
 
-// ----------------------------------------------------
 // 👑 MODUL 10: ADMIN PANEL
-// ----------------------------------------------------
 bot.hears("👑 Admin Panel", async (ctx) => {
     if (!adminList.includes(ctx.from.id)) {
         return ctx.reply("❌ Kechirasiz, siz admin emassiz!");
     }
+    await ctx.reply("👑 Admin boshqaruv paneli faol.");
+});
 
+bot.start();
+console.log("🚀 Bot qayta ishga tushdi!");
