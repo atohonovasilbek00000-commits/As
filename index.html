@@ -1,112 +1,157 @@
-const { Bot, Keyboard, InlineKeyboard } = require("grammY");
+import express from 'express';
+import { PrismaClient } from '@prisma/client';
+import http from 'http';
+import { Server } from 'socket.io';
 
-// Botfather'dan olingan tokenni shu yerga qo'ying
-const BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"; 
-const bot = new Bot(BOT_TOKEN);
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server); // 📹 Real-time Chat va Video qo'ng'iroq uchun
+const prisma = new PrismaClient();
 
-// ----------------------------------------------------
-// DATA STORAGE (Ma'lumotlar ombori)
-// ----------------------------------------------------
-const users = new Map();       
-const matches = [];            
-const reports = [];            
+app.use(express.json());
 
-// ADMIN RO'YXATI (Sizning foydalanuvchi nomingiz qo'shildi)
-const adminUsernames = ["ASLAN_XXXXX"]; 
+// 🤖 AI & XAVFSIZLIK: Nomaqbul so'zlarni avtomatik filtrlash (Spamdan himoya)
+const BAD_WORDS = ['soxta', 'haqorat', 'reklama', '18+']; 
+const filterBadWords = (text) => {
+  if (!text) return text;
+  let filtered = text;
+  BAD_WORDS.forEach(word => {
+    const regex = new RegExp(word, 'gi');
+    filtered = filtered.replace(regex, '***');
+  });
+  return filtered;
+};
 
-// ----------------------------------------------------
-// ⌨️ KLAVIATURALAR (Asosiy Menyu va Admin Menyu)
-// ----------------------------------------------------
-const mainMenu = new Keyboard()
-    .text("👤 Profilim").text("🔍 Profil Qidirish").row()
-    .text("❤️ Matchlarim").text("💬 Chatlar").row()
-    .text("🎬 Reels (Video)").text("🏆 Premium (⭐)").row()
-    .text("🛡️ Xavfsizlik").text("👑 Admin Panel").row()
-    .resized();
+// 🔍 QIDIRUV VA AI TAVSIYALARI
+app.get('/api/search', async (req, res) => {
+  const { userId, minAge, maxAge, maxDistance, onlyOnline, sortByAI } = req.query;
 
-const adminMenu = new InlineKeyboard()
-    .text("👥 Foydalanuvchilar", "adm_users")
-    .text("✔️ Profil Tasdiqlash", "adm_verify").row()
-    .text("🚫 Bloklash (Ban)", "adm_ban")
-    .text("📊 Statistikalar", "adm_stats");
+  const me = await prisma.user.findUnique({ where: { id: parseInt(userId) } });
+  if (!me) return res.status(404).json({ message: "Profil topilmadi" });
 
-// ----------------------------------------------------
-// 🚀 BOT BUYRUKLARI VA LOGIKASI
-// ----------------------------------------------------
+  // Masofa va yosh bo'yicha PostgreSQL qidiruvi
+  let users = await prisma.$queryRaw`
+    SELECT id, name, interests, "isVerified", "lastActive", photos,
+    (6371 * acos(cos(radians(${me.latitude})) * cos(radians(latitude)) * cos(radians(longitude) - radians(${me.longitude})) + sin(radians(${me.latitude})) * sin(radians(latitude)))) AS distance
+    FROM "User"
+    WHERE id != ${me.id} AND "isUnder18" = false
+  `;
 
-// START BUYRUG'I
-bot.command("start", async (ctx) => {
-    const userId = ctx.from.id;
+  // 🤖 AI Profil tavsiyalari (Qiziqishlar mosligiga qarab saralash)
+  if (sortByAI === 'true') {
+    users.sort((a, b) => {
+      const commonA = a.interests.filter(i => me.interests.includes(i)).length;
+      const commonB = b.interests.filter(i => me.interests.includes(i)).length;
+      return commonB - commonA; // Qiziqishi ko'p mos kelganlar tepaga chiqadi
+    });
+  }
 
-    if (!users.has(userId)) {
-        users.set(userId, {
-            id: userId,
-            username: ctx.from.username || "username_yoq",
-            first_name: ctx.from.first_name,
-            age: 22, 
-            region: "Toshkent",
-            city: "Yunusobod",
-            photos: ["https://picsum.photos"], 
-            is_verified: true, 
-            interests: ["Sport", "Musiqa", "Sayohat"],
-            is_premium: false,
-            is_banned: false,
-            ai_score: 98
-        });
-    }
-
-    await ctx.reply(
-        `👋 Salom ${ctx.from.first_name}!\n\nTanishuv va Reels platformasiga xush kelibsiz.`,
-        { reply_markup: mainMenu }
-    );
+  res.json(users);
 });
 
-// 👑 ADMIN PANEL TUGMASI (Tekshirish qismi)
-bot.hears("👑 Admin Panel", async (ctx) => {
-    const username = ctx.from.username;
+// ❤️ LIKE VA MATCH TIZIMI
+app.post('/api/like', async (req, res) => {
+  const { likerId, likedId, isSuper } = req.body;
 
-    // Foydalanuvchi nomi admin ro'yxatida borligini tekshirish
-    if (!username || !adminUsernames.includes(username)) {
-        return ctx.reply("❌ Kechirasiz, siz admin emassiz va bu bo'limga kira olmaysiz!");
-    }
+  // 🏆 PREMIUM CHEKLOVI (Oddiy foydalanuvchilar super like bosa olmaydi)
+  const user = await prisma.user.findUnique({ where: { id: likerId } });
+  if (isSuper && !user.isPremium) {
+    return res.status(403).json({ message: "Super Like faqat Premium (⭐) a'zolar uchun!" });
+  }
 
-    await ctx.reply(
-        "👑 **Boshqaruv Paneli (Admin Control)**\n\n" +
-        "Tizimni boshqarish va foydalanuvchilar ustidan nazorat qilish uchun tugmalardan foydalaning:", 
-        { reply_markup: adminMenu, parse_mode: "Markdown" }
-    );
+  const newLike = await prisma.like.create({
+    data: { likerId, likedId, isSuper }
+  });
+
+  // Qarshi tomondan like bormi? (Match tekshirish)
+  const mutualLike = await prisma.like.findUnique({
+    where: { likerId_likedId: { likerId: likedId, likedId: likerId } }
+  });
+
+  if (mutualLike) {
+    const match = await prisma.match.create({
+      data: { user1Id: Math.min(likerId, likedId), user2Id: Math.max(likerId, likedId) }
+    });
+    
+    // 🔔 BILDIRISHNOMA (Real-time xabar yuborish)
+    io.to(`user_${likerId}`).emit('notification', { type: 'MATCH', message: 'Yangi Match! 🎉' });
+    io.to(`user_${likedId}`).emit('notification', { type: 'MATCH', message: 'Yangi Match! 🎉' });
+
+    return res.json({ isMatch: true, match });
+  }
+
+  res.json({ isMatch: false, message: "Like saqlandi" });
 });
 
-// Admin tugmalari bosilganda qayta ishlovchi qism
-bot.on("callback_query:data", async (ctx) => {
-    const data = ctx.callbackQuery.data;
-    const username = ctx.from.username;
+// 🏆 PREMIUM: Kim sizni yoqtirganini ko'rish
+app.get('/api/premium/who-liked-me', async (req, res) => {
+  const { userId } = req.query;
+  const user = await prisma.user.findUnique({ where: { id: parseInt(userId) } });
 
-    // Xavfsizlik uchun bu yerda ham adminlikni tekshiramiz
-    if (!username || !adminUsernames.includes(username)) {
-        return ctx.answerCallbackQuery("Ruxsat berilmagan! ❌");
-    }
+  if (!user.isPremium) {
+    return res.status(403).json({ message: "Bu funksiya faqat Premium foydalanuvchilar uchun" });
+  }
 
-    if (data === "adm_stats") {
-        await ctx.answerCallbackQuery();
-        await ctx.reply(
-            `📊 **Tizim statistikasi:**\n\n` +
-            `• Jami ro'yxatdan o'tganlar: ${users.size} ta\n` +
-            `• Faol a'zolar: 1,420 ta\n` +
-            `• Bloklanganlar: 0 ta\n` +
-            `• Kelib tushgan shikoyatlar: ${reports.length} ta`
-        );
-    } else if (data === "adm_users") {
-        await ctx.answerCallbackQuery();
-        await ctx.reply("👥 Foydalanuvchilar ro'yxati yuklanmoqda...");
-    } else if (data === "adm_verify") {
-        await ctx.answerCallbackQuery();
-        await ctx.reply("✔️ Tasdiqlash kutilayotgan profillar mavjud emas.");
-    } else if (data === "adm_ban") {
-        await ctx.answerCallbackQuery();
-        await ctx.reply("🚫 Bloklash uchun foydalanuvchi ID raqamini kiriting (Masalan: /ban ID).");
-    }
+  const likes = await prisma.like.findMany({
+    where: { likedId: user.id },
+    include: { liker: true }
+  });
+  res.json(likes);
 });
 
-bot.start();
-console.log("🚀 Bot muvaffaqiyatli ishga tushdi! Admin: @ASLAN_XXXXX");
+// 💬 CHAT MULOQOTI
+app.post('/api/chat/send', async (req, res) => {
+  const { senderId, receiverId, text, mediaUrl } = req.body;
+
+  // AI kontent filtri qo'llaniladi
+  const cleanText = filterBadWords(text);
+
+  const message = await prisma.message.create({
+    data: { senderId, receiverId, text: cleanText, mediaUrl }
+  });
+
+  // 🔔 Yangi xabar bildirishnomasi
+  io.to(`user_${receiverId}`).emit('message', message);
+  res.json(message);
+});
+
+// 🎬 REELS (Qisqa videolar)
+app.get('/api/reels', async (req, res) => {
+  // Algoritm bo'yicha eng ko'p ko'rilgan reelslarni tavsiya qilish
+  const reels = await prisma.reel.findMany({
+    orderBy: { likesCount: 'desc' },
+    include: { user: true }
+  });
+  res.json(reels);
+});
+
+// 🛡️ XAVFSIZLIK: Bloklash va Shikoyat
+app.post('/api/security/block', async (req, res) => {
+  const { blockerId, blockedId } = req.body;
+  const block = await prisma.block.create({ data: { blockerId, blockedId } });
+  res.json({ message: "Foydalanuvchi muvaffaqiyatli bloklandi", block });
+});
+
+// 📹 WEB RTC (Video chat va Tasodifiy Ruletka ulanishi)
+io.on('connection', (socket) => {
+  socket.on('join-room', (userId) => {
+    socket.join(`user_${userId}`);
+  });
+
+  // Video qo'ng'iroq signallari (WebRTC peer-to-peer ulanish uchun)
+  socket.on('video-call-offer', ({ to, offer }) => {
+    io.to(`user_${to}`).emit('video-call-offer', { from: socket.id, offer });
+  });
+
+  socket.on('video-call-answer', ({ to, answer }) => {
+    io.to(`user_${to}`).emit('video-call-answer', { answer });
+  });
+
+  // Tasodifiy video chat ruletka tizimi
+  socket.on('join-roulette', (userId) => {
+    socket.join('roulette_pool');
+    // Pool ichidan tasodifiy boshqa foydalanuvchini juftlik qilish logikasi shu yerda boshqariladi
+  });
+});
+
+server.listen(3000, () => console.log('Dating App Backend running on port 3000'));
